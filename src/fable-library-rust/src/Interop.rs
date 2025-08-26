@@ -1,19 +1,31 @@
 pub mod ListExt {
     // use core::ops::Deref;
-    use crate::List_::{cons, empty, reverse, List};
-    use crate::Native_::{seq_to_iter, Vec};
+    use crate::List_::{cons, empty, isEmpty, reverse, List};
+    use crate::Native_::{seq_to_iter, NullableRef, Vec};
     use crate::Seq_::ofList;
 
     impl<T: Clone> List<T> {
         //todo - non-consuming iter by ref
         // pub fn iter<'a>(&self) -> impl Iterator<Item = & 'a T> {
         //     let s = ofList(self.clone());
-        //     seq_to_iter(&s)
+        //     seq_to_iter(s)
         // }
 
         pub fn into_iter(&self) -> impl Iterator<Item = T> {
             let s = ofList(self.clone());
-            seq_to_iter(&s)
+            seq_to_iter(s)
+        }
+    }
+
+    impl<T: Clone> NullableRef for List<T> {
+        #[inline]
+        fn null() -> Self {
+            empty()
+        }
+
+        #[inline]
+        fn is_null(&self) -> bool {
+            isEmpty(self.clone())
         }
     }
 
@@ -63,8 +75,8 @@ pub mod ListExt {
 }
 
 pub mod SetExt {
-    use crate::Native_::{make_compare, seq_to_iter, Func2, Vec};
-    use crate::Set_::{add, compareTo, empty, equals, toSeq, Set};
+    use crate::Native_::{make_compare, seq_to_iter, Func2, NullableRef, Vec};
+    use crate::Set_::{add, compareTo, empty, equals, isEmpty, toSeq, Set};
     use core::cmp::Ordering;
     use core::hash::{Hash, Hasher};
 
@@ -72,12 +84,24 @@ pub mod SetExt {
         //todo - non-consuming iter by ref
         // pub fn iter<'a>(&self) -> impl Iterator<Item = & 'a T> {
         //     let s = toSeq(self.clone());
-        //     seq_to_iter(&s)
+        //     seq_to_iter(s)
         // }
 
         pub fn into_iter(&self) -> impl Iterator<Item = T> {
             let s = toSeq(self.clone());
-            seq_to_iter(&s)
+            seq_to_iter(s)
+        }
+    }
+
+    impl<T: Clone> NullableRef for Set<T> {
+        #[inline]
+        fn null() -> Self {
+            empty()
+        }
+
+        #[inline]
+        fn is_null(&self) -> bool {
+            isEmpty(self.clone())
         }
     }
 
@@ -92,7 +116,7 @@ pub mod SetExt {
     impl<T: Clone + PartialOrd + Hash> Hash for Set<T> {
         fn hash<H: Hasher>(&self, state: &mut H) {
             let s = toSeq(self.clone());
-            seq_to_iter(&s).for_each(|x| x.hash(state))
+            seq_to_iter(s).for_each(|x| x.hash(state))
         }
     }
 
@@ -146,8 +170,8 @@ pub mod SetExt {
 }
 
 pub mod MapExt {
-    use crate::Map_::{add, compareTo, empty, equals, iterate, toSeq, Map};
-    use crate::Native_::{make_compare, seq_to_iter, Func2, Vec};
+    use crate::Map_::{add, compareTo, empty, equals, isEmpty, iterate, toSeq, Map};
+    use crate::Native_::{make_compare, seq_to_iter, Func2, NullableRef, Vec};
     use core::cmp::Ordering;
     use core::hash::{Hash, Hasher};
 
@@ -155,12 +179,24 @@ pub mod MapExt {
         //todo - non-consuming iter by ref
         // pub fn iter<'a>(&self) -> impl Iterator<Item = (& 'a K, & 'a V)> {
         //     let s = toSeq(self.clone());
-        //     seq_to_iter(&s).map(|kvp| kvp.as_ref().clone())
+        //     seq_to_iter(s).map(|kvp| kvp.as_ref().clone())
         // }
 
         pub fn into_iter(&self) -> impl Iterator<Item = (K, V)> {
             let s = toSeq(self.clone());
-            seq_to_iter(&s).map(|kvp| kvp.as_ref().clone())
+            seq_to_iter(s).map(|kvp| kvp.as_ref().clone())
+        }
+    }
+
+    impl<K: Clone + PartialOrd, V: Clone> NullableRef for Map<K, V> {
+        #[inline]
+        fn null() -> Self {
+            empty()
+        }
+
+        #[inline]
+        fn is_null(&self) -> bool {
+            isEmpty(self.clone())
         }
     }
 
@@ -175,7 +211,7 @@ pub mod MapExt {
     impl<K: Clone + PartialOrd + Hash, V: Clone + Hash> Hash for Map<K, V> {
         fn hash<H: Hasher>(&self, state: &mut H) {
             let s = toSeq(self.clone());
-            seq_to_iter(&s).for_each(|kvp| kvp.hash(state))
+            seq_to_iter(s).for_each(|kvp| kvp.hash(state))
         }
     }
 

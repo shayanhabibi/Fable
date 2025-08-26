@@ -5,8 +5,18 @@ mod Lazy;
 mod LrcPtr;
 mod Mutable;
 
+#[cfg(feature = "no_std")]
+pub mod print_no_std;
+
 pub mod Native_ {
-    pub(crate) extern crate alloc;
+
+    extern crate alloc;
+
+    #[cfg(not(feature = "no_std"))]
+    pub use std::{eprint, eprintln, print, println};
+
+    #[cfg(feature = "no_std")]
+    pub use super::print_no_std::{eprint, eprintln, print, println};
 
     // re-export at module level
     // pub use alloc::borrow::Cow;
@@ -15,6 +25,7 @@ pub mod Native_ {
     pub use alloc::string::{String, ToString};
     pub use alloc::sync::Arc;
     pub use alloc::vec::Vec;
+    pub use alloc::{format, vec};
 
     pub use core::any::Any;
 
@@ -121,7 +132,7 @@ pub mod Native_ {
 
     use core::cmp::Ordering;
     use core::fmt::{Debug, Display, Formatter, Result};
-    use core::hash::{BuildHasher, Hash, Hasher};
+    use core::hash::{BuildHasher, BuildHasherDefault, Hash, Hasher};
 
     // default object trait
     // pub trait IObject: Clone + Debug + 'static {}
@@ -138,7 +149,7 @@ pub mod Native_ {
     }
 
     #[inline]
-    pub fn is_null<T: NullableRef>(o: T) -> bool {
+    pub fn is_null<T: NullableRef>(o: &T) -> bool {
         o.is_null()
     }
 
@@ -162,19 +173,11 @@ pub mod Native_ {
     }
 
     pub fn min<T: PartialOrd>(x: T, y: T) -> T {
-        if x < y {
-            x
-        } else {
-            y
-        }
+        if x < y { x } else { y }
     }
 
     pub fn max<T: PartialOrd>(x: T, y: T) -> T {
-        if x > y {
-            x
-        } else {
-            y
-        }
+        if x > y { x } else { y }
     }
 
     pub fn equals<T: PartialEq>(x: T, y: T) -> bool {
@@ -187,9 +190,13 @@ pub mod Native_ {
 
     pub fn getHashCode<T: Hash>(x: T) -> i32 {
         #[cfg(feature = "no_std")]
-        let mut hasher = hashbrown::hash_map::DefaultHashBuilder::default().build_hasher();
+        type DefaultHashBuilder = hashbrown::DefaultHashBuilder;
         #[cfg(not(feature = "no_std"))]
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        type DefaultHashBuilder = BuildHasherDefault<std::collections::hash_map::DefaultHasher>;
+
+        static builder: OnceInit<DefaultHashBuilder> = OnceInit::new();
+        let default_builder = builder.get_or_init(move || DefaultHashBuilder::default());
+        let mut hasher = default_builder.build_hasher();
         x.hash(&mut hasher);
         let h = hasher.finish();
         ((h >> 32) ^ h) as i32
@@ -438,7 +445,7 @@ pub mod Native_ {
     }
 
     pub fn ofObj<T: Clone + NullableRef + 'static>(value: T) -> Option<T> {
-        if is_null(value.clone()) {
+        if is_null(&value) {
             None::<T>
         } else {
             Some(value)
@@ -456,7 +463,7 @@ pub mod Native_ {
     // Sequences
     // -----------------------------------------------------------
 
-    pub fn seq_to_iter<T>(seq: &Seq<T>) -> impl Iterator<Item = T>
+    pub fn seq_to_iter<T>(seq: Seq<T>) -> impl Iterator<Item = T>
     where
         T: Clone + 'static,
     {

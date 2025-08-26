@@ -1,4 +1,4 @@
-import { structuralHash, equals, compare } from "./Util.js";
+import { Exception, Nullable, structuralHash, equals, compare } from "./Util.js";
 
 // Options are erased in runtime by Fable, but we have
 // the `Some` type below to wrap values that would evaluate
@@ -11,8 +11,6 @@ import { structuralHash, equals, compare } from "./Util.js";
 
 // Note: We use non-strict null check for backwards compatibility with
 // code that use F# options to represent values that could be null in JS
-
-export type Nullable<T> = T | null | undefined;
 
 export type Option<T> = T | Some<T> | undefined;
 
@@ -54,9 +52,17 @@ export class Some<T> {
   }
 }
 
+export function nonNullValue<T>(x: Nullable<T>): T {
+  if (x == null) {
+    throw new Exception("Nullable has no value");
+  } else {
+    return x;
+  }
+}
+
 export function value<T>(x: Option<T>) {
   if (x == null) {
-    throw new Error("Option has no value");
+    throw new Exception("Option has no value");
   } else {
     return x instanceof Some ? x.value : x;
   }

@@ -1,125 +1,231 @@
-from typing import Any
+from typing import Any, Literal, SupportsFloat, SupportsInt, overload
 
-from .types import FSharpRef
-
-
-def compare(x: int, y: int) -> int:
-    return -1 if x < y else 1 if x > y else 0
-
-
-def equals(a: int, b: int) -> bool:
-    return a == b
+from .core._core import get_range_64 as get_range
+from .core._core import parse_int64 as parse
+from .core._core import try_parse_int64 as try_parse
+from .types import float64, int32, int64, uint64
 
 
-def abs(x: int) -> int:
-    return -x if x < 0 else x
+def compare(x: int64, y: int64) -> int64:
+    return int64.NEG_ONE if x < y else int64.ONE if x > y else int64.ZERO
 
 
-def sign(x: int) -> int:
-    return -1 if x < 0 else 1 if x > 0 else 0
+def sign(x: int64) -> int64:
+    return int64.NEG_ONE if x < int64.ZERO else int64.ONE if x > int64.ZERO else int64.ZERO
 
 
-def max(x: int, y: int) -> int:
+@overload
+def max(x: int64, y: int64) -> int64: ...
+
+
+@overload
+def max(x: uint64, y: uint64) -> uint64: ...
+
+
+def max(x: int64 | uint64, y: int64 | uint64) -> int64 | uint64:
     return x if x > y else y
 
 
-def min(x: int, y: int) -> int:
+@overload
+def min(x: int64, y: int64) -> int64: ...
+
+
+@overload
+def min(x: uint64, y: uint64) -> uint64: ...
+
+
+def min(x: int64 | uint64, y: int64 | uint64) -> int64 | uint64:
     return x if x < y else y
 
 
-def op_unary_negation(value: int) -> int:
+def op_unary_negation(value: int64) -> int64:
     # Note that we cannot negate the smallest negative number
-    return -value if value != -0x8000000000000000 else -0x8000000000000000
+    return -value if value != int64.NEG_ONE else int64.NEG_ONE
 
 
-# def op_unary_negation(a: int) -> int: return -a
-def op_unary_plus(a: int) -> int:
+@overload
+def op_unary_plus(a: int64) -> int64: ...
+
+
+@overload
+def op_unary_plus(a: uint64) -> uint64: ...
+
+
+def op_unary_plus(a: int64 | uint64) -> int64 | uint64:
     return +a
 
 
-def op_logical_not(a: int) -> int:
+@overload
+def op_logical_not(a: int64) -> int64: ...
+
+
+@overload
+def op_logical_not(a: uint64) -> uint64: ...
+
+
+def op_logical_not(a: int64 | uint64) -> int64 | uint64:
     return ~a
 
 
-def op_addition(a: int, b: int) -> int:
+@overload
+def op_addition(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_addition(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_addition(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a + b
 
 
-def op_subtraction(a: int, b: int) -> int:
+@overload
+def op_subtraction(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_subtraction(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_subtraction(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a - b
 
 
-def op_multiply(a: int, b: int) -> int:
+@overload
+def op_multiply(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_multiply(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_multiply(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a * b
 
 
-def op_division(a: int, b: int) -> int:
+@overload
+def op_division(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_division(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_division(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a // b
 
 
-def op_modulus(a: int, b: int) -> int:
+@overload
+def op_modulus(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_modulus(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_modulus(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a % b
 
 
-def op_right_shift(a: int, b: int) -> int:
+@overload
+def op_right_shift(a: int64, b: int32) -> int64: ...
+
+
+@overload
+def op_right_shift(a: uint64, b: int32) -> uint64: ...
+
+
+def op_right_shift(a: int64 | uint64, b: int32) -> int64 | uint64:
     return a >> b
 
 
-def op_left_shift(a: int, b: int) -> int:
+@overload
+def op_left_shift(a: int64, b: int32) -> int64: ...
+
+
+@overload
+def op_left_shift(a: uint64, b: int32) -> uint64: ...
+
+
+def op_left_shift(a: int64 | uint64, b: int32) -> int64 | uint64:
     return a << b
 
 
-def op_bitwise_and(a: int, b: int) -> int:
+@overload
+def op_bitwise_and(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_bitwise_and(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_bitwise_and(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a & b
 
 
-def op_bitwise_or(a: int, b: int) -> int:
+@overload
+def op_bitwise_or(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_bitwise_or(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_bitwise_or(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a | b
 
 
-def op_exclusive_or(a: int, b: int) -> int:
+@overload
+def op_exclusive_or(a: int64, b: int64) -> int64: ...
+
+
+@overload
+def op_exclusive_or(a: uint64, b: uint64) -> uint64: ...
+
+
+def op_exclusive_or(a: int64 | uint64, b: int64 | uint64) -> int64 | uint64:
     return a ^ b
 
 
-def op_less_than(a: int, b: int) -> bool:
+def op_less_than(a: int64 | uint64, b: int64 | uint64) -> bool:
     return a < b
 
 
-def op_less_than_or_equal(a: int, b: int) -> bool:
+def op_less_than_or_equal(a: int64 | uint64, b: int64 | uint64) -> bool:
     return a <= b
 
 
-def op_greater_than(a: int, b: int) -> bool:
+def op_greater_than(a: int64, b: int64) -> bool:
     return a > b
 
 
-def op_greater_than_or_equal(a: int, b: int) -> bool:
+def op_greater_than_or_equal(a: int64, b: int64) -> bool:
     return a >= b
 
 
-def op_equality(a: int, b: int) -> bool:
+def op_equality(a: int64, b: int64) -> bool:
     return a == b
 
 
-def op_inequality(a: int, b: int) -> bool:
+def op_inequality(a: int64, b: int64) -> bool:
     return a != b
 
 
-def from_bits(lowBits: int, highBits: int, unsigned: bool) -> int:
-    ret = lowBits + (highBits << 32)
+def from_bits(lowBits: int64, high_bits: int64, unsigned: bool) -> int64:
+    ret = lowBits + (high_bits << 32)
     if not unsigned and ret > 0x7FFFFFFFFFFFFFFF:
         return ret - 0x10000000000000000
 
     return ret
 
 
-def from_int(value: int, unsigned: bool = False) -> int:
+def from_int(value: int64, unsigned: bool = False) -> int64:
     if unsigned and value < 0:
         return value + 0x10000000000000000
     return value
 
 
-def from_value(value: Any, unsigned: bool = False) -> int:
+def from_value(value: Any, unsigned: bool = False) -> int64:
     value = int(value)
     if unsigned and value < 0:
         return value + 0x10000000000000000
@@ -129,112 +235,105 @@ def from_value(value: Any, unsigned: bool = False) -> int:
     return value
 
 
-def from_number(value: int, unsigned: bool) -> int:
-    return int(value)
+@overload
+def from_number(value: SupportsInt, unsigned: Literal[True]) -> uint64: ...
 
 
-def to_number(value: int) -> float:
-    return float(value)
+@overload
+def from_number(value: SupportsInt, unsigned: Literal[False]) -> int64: ...
 
 
-def from_integer(value: int, unsigned: bool | None = None, kind: int | None = None) -> int:
-    if unsigned and value < 0:
-        return value + 0x10000000000000000
-    elif not unsigned and value > 9223372036854775807:
-        return value - 0x10000000000000000
-    return value
+def from_number(value: SupportsInt, unsigned: bool) -> int64 | uint64:
+    if unsigned:
+        return uint64(value)
+    else:
+        return int64(value)
 
 
-def get_range(unsigned: bool) -> tuple[int, int]:
-    return (0, 18446744073709551615) if unsigned else (-9223372036854775808, 9223372036854775807)
+def to_number(value: SupportsFloat | SupportsInt) -> float64:
+    return float64(value)
 
 
+@overload
+def from_integer(value: int, unsigned: Literal[True], kind: int) -> uint64: ...
+
+
+@overload
+def from_integer(value: int, unsigned: Literal[False], kind: int) -> int64: ...
+
+
+def from_integer(value: int, unsigned: bool | None = None, kind: int | None = None) -> int64 | uint64:
+    if unsigned:
+        return uint64(value)
+    else:
+        return int64(value)
+
+
+# Re-export constants for compatibility
 AllowHexSpecifier = 0x00000200
 
 
-def parse(string: str, style: int, unsigned: bool, bitsize: int, radix: int = 10) -> int:
-    # const res = isValid(str, style, radix);
-    if style & AllowHexSpecifier or string.startswith("0x"):
-        radix = 16
-    elif string.startswith("0b"):
-        radix = 2
-    elif string.startswith("0o"):
-        radix = 8
-
-    try:
-        v = int(string, base=radix)
-    except Exception:
-        raise ValueError(f"The input string {string} was not in a correct format.")
-
-    (umin, umax) = get_range(True)
-    if not unsigned and radix != 10 and v >= umin and v <= umax:
-        mask = 1 << (bitsize - 1)
-        if v & mask:  # Test if negative
-            v = v - (mask << 1)
-
-    (min, max) = get_range(unsigned)
-    if v >= min and v <= max:
-        return v
-
-    raise ValueError(f"The input string {string} was not in a correct format.")
-
-
-def try_parse(string: str, style: int, unsigned: bool, bitsize: int, defValue: FSharpRef[int]) -> bool:
-    try:
-        defValue.contents = parse(string, style, unsigned, bitsize)
-        return True
-    except Exception:
-        return False
-
-
-def to_string(x: int) -> str:
+def to_string(x: int64 | uint64) -> str:
     return str(x)
 
 
-def to_int(value: int) -> int:
-    if value > 9223372036854775807:
-        return value - 0x10000000000000000
-    return value
-
-
-long = int
-
 __all__ = [
     "compare",
-    "equals",
-    "abs",
-    "sign",
-    "max",
-    "min",
-    "op_unary_negation",
-    "op_unary_plus",
-    "op_logical_not",
-    "op_addition",
-    "op_subtraction",
-    "op_multiply",
-    "op_division",
-    "op_modulus",
-    "op_right_shift",
-    "op_left_shift",
-    "op_bitwise_and",
-    "op_bitwise_or",
-    "op_exclusive_or",
-    "op_less_than",
-    "op_less_than_or_equal",
-    "op_greater_than",
-    "op_greater_than_or_equal",
-    "op_equality",
-    "op_inequality",
     "from_bits",
     "from_int",
-    "from_value",
-    "from_number",
-    "to_number",
     "from_integer",
+    "from_number",
+    "from_value",
     "get_range",
+    "max",
+    "max",
+    "min",
+    "min",
+    "op_addition",
+    "op_addition",
+    "op_bitwise_and",
+    "op_bitwise_and",
+    "op_bitwise_or",
+    "op_bitwise_or",
+    "op_division",
+    "op_division",
+    "op_equality",
+    "op_equality",
+    "op_exclusive_or",
+    "op_exclusive_or",
+    "op_greater_than",
+    "op_greater_than",
+    "op_greater_than_or_equal",
+    "op_greater_than_or_equal",
+    "op_inequality",
+    "op_inequality",
+    "op_left_shift",
+    "op_left_shift",
+    "op_less_than",
+    "op_less_than",
+    "op_less_than_or_equal",
+    "op_less_than_or_equal",
+    "op_logical_not",
+    "op_logical_not",
+    "op_modulus",
+    "op_modulus",
+    "op_multiply",
+    "op_multiply",
+    "op_right_shift",
+    "op_right_shift",
+    "op_subtraction",
+    "op_subtraction",
+    "op_unary_negation",
+    "op_unary_negation",
+    "op_unary_plus",
+    "op_unary_plus",
     "parse",
-    "try_parse",
+    "parse",
+    "sign",
+    "sign",
+    "to_number",
     "to_string",
-    "to_int",
-    "long",
+    "to_string",
+    "try_parse",
+    "try_parse",
 ]

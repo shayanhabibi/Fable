@@ -431,8 +431,7 @@ open Util
 //                 member _.Value = y
 //                 member this2.Add() = this1.Value + this2.Value }
 
-// let areEqual (x: obj) (y: obj) =
-//     x = y
+// let areEqual (x: obj) (y: obj) = x = y
 
 // type MyUnion1 = Foo of int * int | Bar of float | Baz
 // type MyUnion2 = Foo of int * int
@@ -584,7 +583,15 @@ type VeryOptionalInterface =
 //     static member DefaultNullParam([<Optional; DefaultParameterValue(null:obj)>] x: obj) = x
 //     static member inline InlineAdd(x: int, ?y: int) = x + (defaultArg y 2)
 
+type Model = unit
+
+let update (model: Model) =
+    model, ()
+
 let tests() =
+
+    testCase "Unit arguments work" <| fun () ->
+        update () |> equal ((), ())
 
     testCase "Optional arguments work" <| fun () ->
         let x = MyOptionalClass(?arg2 = Some "2")
@@ -796,12 +803,12 @@ let tests() =
 //         box 50 |> isLong |> equal false
 
 //     testCase "Type test with BigInt" <| fun () ->
-//         let isBigInd (x: obj) =
+//         let isBigInt (x: obj) =
 //             match x with
 //             | :? bigint -> true
 //             | _ -> false
-//         box 5I |> isBigInd |> equal true
-//         box 50 |> isBigInd |> equal false
+//         box 5I |> isBigInt |> equal true
+//         box 50 |> isBigInt |> equal false
 
 //     testCase "Property names don't clash with built-in JS objects" <| fun () -> // See #168
 //         let gameState = {

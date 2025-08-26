@@ -194,7 +194,13 @@ module Util =
         let tup = List.length genArgs |> getTupleTypeIdent com ctx
         Type.reference (tup, genArgs)
 
-    let transformOptionType com ctx genArg =
+    let transformNullableType com ctx isStruct genArg =
+        if isStruct then
+            transformType com ctx genArg |> Nullable
+        else
+            transformType com ctx genArg // nullable reference types are erased
+
+    let transformOptionType com ctx _isStruct genArg =
         let genArg = transformType com ctx genArg
 
         Type.reference (libValue com ctx Fable.MetaType "Types" "Some", [ genArg ])
@@ -215,7 +221,6 @@ module Util =
         | Types.array, _ -> List Dynamic
         | "System.Tuple`1", _ -> transformTupleType com ctx genArgs
         | Types.valueType, _ -> Object
-        | Types.nullable, [ genArg ]
         | "Fable.Core.Dart.DartNullable`1", [ genArg ] -> Nullable genArg
         | Types.regexGroup, _ -> Nullable String
         | Types.regexMatch, _ -> makeTypeRefFromName "Match" []
@@ -260,6 +265,7 @@ module Util =
     /// Should this be done in FSharp2Fable step?
     let sanitizeMember (name: string) =
         Naming.sanitizeIdentForbiddenCharsWith
+            Naming.isDartIdentChar
             (function
             | '@' -> "$"
             | _ -> "_")
@@ -268,7 +274,7 @@ module Util =
     let getUniqueNameInRootScope (ctx: Context) name =
         let name =
             (name, Naming.NoMemberPart)
-            ||> Naming.sanitizeIdent (fun name ->
+            ||> Naming.sanitizeDartIdent (fun name ->
                 ctx.UsedNames.RootScope.Contains(name)
                 || ctx.UsedNames.DeclarationScopes.Contains(name)
             )
@@ -279,7 +285,7 @@ module Util =
     let getUniqueNameInDeclarationScope (ctx: Context) name =
         let name =
             (name, Naming.NoMemberPart)
-            ||> Naming.sanitizeIdent (fun name ->
+            ||> Naming.sanitizeDartIdent (fun name ->
                 ctx.UsedNames.RootScope.Contains(name)
                 || ctx.UsedNames.CurrentDeclarationScope.Contains(name)
             )
@@ -445,11 +451,11 @@ module Util =
         let paramsInfo, thisArg, args =
             match info with
             | NoCallInfo args ->
-                let args = FSharp2Fable.Util.dropUnitCallArg args []
+                let args = FSharp2Fable.Util.dropUnitCallArg com args [] None
                 None, None, args
             | CallInfo callInfo ->
                 let args =
-                    FSharp2Fable.Util.dropUnitCallArg callInfo.Args callInfo.SignatureArgTypes
+                    FSharp2Fable.Util.dropUnitCallArg com callInfo.Args callInfo.SignatureArgTypes callInfo.MemberRef
 
                 let paramsInfo =
                     callInfo.MemberRef |> Option.bind com.TryGetMember |> Option.map getParamsInfo
@@ -461,8 +467,8 @@ module Util =
             |> Option.map (splitNamedArgs args)
             |> function
                 | None -> args, []
-                | Some(args, []) -> args, []
-                | Some(args, namedArgs) ->
+                | Some(args, None) -> args, []
+                | Some(args, Some namedArgs) ->
                     args,
                     namedArgs
                     |> List.choose (fun (p, v) ->
@@ -650,7 +656,8 @@ module Util =
             | BigInt
             | NativeInt
             | UNativeInt -> Dynamic // TODO
-        | Fable.Option(genArg, _isStruct) -> transformOptionType com ctx genArg
+        | Fable.Nullable(genArg, isStruct) -> transformNullableType com ctx isStruct genArg
+        | Fable.Option(genArg, isStruct) -> transformOptionType com ctx isStruct genArg
         | Fable.Array(TransformType com ctx genArg, _) -> List genArg
         | Fable.List(TransformType com ctx genArg) -> Type.reference (getFSharpListTypeIdent com ctx, [ genArg ])
         | Fable.Tuple(genArgs, _) -> transformGenArgs com ctx genArgs |> transformTupleType com ctx
@@ -795,10 +802,10 @@ module Util =
             Expression.invocationExpression (regexIdent.Expr, args, Type.reference regexIdent)
             |> resolveExpr returnStrategy
 
-        | Fable.NewOption(expr, genArg, _isStruct) ->
+        | Fable.NewOption(expr, genArg, isStruct) ->
             let transformOption (com: IDartCompiler) ctx genArg (arg: Expression) =
                 let cons = libValue com ctx Fable.MetaType "Types" "Some"
-                let t = transformOptionType com ctx genArg
+                let t = transformOptionType com ctx isStruct genArg
 
                 let isConst, args =
                     if areConstTypes t.Generics && isConstExpr ctx arg then
@@ -1598,7 +1605,7 @@ module Util =
             let bindings, replacements =
                 (([], Map.empty), identsAndValues)
                 ||> List.fold (fun (bindings, replacements) (ident, expr) ->
-                    if canHaveSideEffects expr then
+                    if canHaveSideEffects com expr then
                         (ident, expr) :: bindings, replacements
                     else
                         bindings, Map.add ident.Name expr replacements
@@ -2206,7 +2213,7 @@ module Util =
         ctx
         kind
         (genParams: Fable.GenericParam list)
-        (paramGroups: Fable.Parameter list list)
+        (info: Fable.MemberFunctionOrValue)
         (args: Fable.Ident list)
         (body: Fable.Expr)
         =
@@ -2228,18 +2235,22 @@ module Util =
 
         let args, body, returnType = transformFunction com ctx funcName args body
 
+        let parameters = List.concat info.CurriedParameterGroups
+
+        let argsWithParams (args: Ident list) =
+            List.zip args parameters
+            |> List.map (fun (a, p) ->
+                let defVal = p.DefaultValue |> Option.map (transformAndCaptureExpr com ctx >> snd)
+
+                FunctionArg(a, isOptional = p.IsOptional, isNamed = p.IsNamed, ?defaultValue = defVal)
+            )
+
         let args =
-            let parameters = List.concat paramGroups
-
-            if List.sameLength args parameters then
-                List.zip args parameters
-                |> List.map (fun (a, p) ->
-                    let defVal = p.DefaultValue |> Option.map (transformAndCaptureExpr com ctx >> snd)
-
-                    FunctionArg(a, isOptional = p.IsOptional, isNamed = p.IsNamed, ?defaultValue = defVal)
-                )
-            else
-                args |> List.map FunctionArg
+            match args with
+            | thisArg :: args when info.IsInstance && List.sameLength args parameters ->
+                (FunctionArg(thisArg)) :: (argsWithParams args)
+            | args when List.sameLength args parameters -> argsWithParams args
+            | _ -> args |> List.map FunctionArg
 
         args, body, returnType
 
@@ -2258,14 +2269,7 @@ module Util =
         let entAndMembGenParams = getEntityAndMemberArgs com info
 
         let args, body, returnType =
-            getMemberArgsAndBody
-                com
-                ctx
-                (NonAttached memb.Name)
-                entAndMembGenParams
-                info.CurriedParameterGroups
-                memb.Args
-                memb.Body
+            getMemberArgsAndBody com ctx (NonAttached memb.Name) entAndMembGenParams info memb.Args memb.Body
 
         let isEntryPoint =
             info.Attributes |> Seq.exists (fun att -> att.Entity.FullName = Atts.entryPoint)
@@ -2734,14 +2738,7 @@ module Util =
             let entAndMembGenParams = getEntityAndMemberArgs com info
 
             let args, body, returnType =
-                getMemberArgsAndBody
-                    com
-                    ctx
-                    (Attached isStatic)
-                    entAndMembGenParams
-                    info.CurriedParameterGroups
-                    memb.Args
-                    memb.Body
+                getMemberArgsAndBody com ctx (Attached isStatic) entAndMembGenParams info memb.Args memb.Body
 
             let kind, name =
                 match abstractFullName with
@@ -2802,14 +2799,7 @@ module Util =
                 let entGenParams = classEnt.GenericParameters
 
                 let consArgs, consBody, _ =
-                    getMemberArgsAndBody
-                        com
-                        ctx
-                        ClassConstructor
-                        entGenParams
-                        consInfo.CurriedParameterGroups
-                        cons.Args
-                        cons.Body
+                    getMemberArgsAndBody com ctx ClassConstructor entGenParams consInfo cons.Args cons.Body
 
                 // Analyze the constructor body to see if we can assign fields
                 // directly and prevent declaring them as late final
@@ -3071,6 +3061,7 @@ module Compiler =
             member _.OutputDir = com.OutputDir
             member _.OutputType = com.OutputType
             member _.ProjectFile = com.ProjectFile
+            member _.ProjectOptions = com.ProjectOptions
             member _.SourceFiles = com.SourceFiles
             member _.IncrementCounter() = com.IncrementCounter()
 

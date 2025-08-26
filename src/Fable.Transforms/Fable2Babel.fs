@@ -75,6 +75,10 @@ type IBabelCompiler =
 
     abstract WarnOnlyOnce: string * ?range: SourceLocation -> unit
 
+    abstract SaveTopDirectivePrologue: string -> unit
+
+    abstract GetAllAllTopDirectivesPrologue: unit -> string seq
+
 module Lib =
 
     let libCall (com: IBabelCompiler) ctx r moduleName memberName genArgs args =
@@ -330,6 +334,8 @@ module Reflection =
         | Fable.LambdaType(argType, returnType) -> genericTypeInfo "lambda" [ argType; returnType ]
         | Fable.DelegateType(argTypes, returnType) -> genericTypeInfo "delegate" [ yield! argTypes; yield returnType ]
         | Fable.Tuple(genArgs, _) -> genericTypeInfo "tuple" genArgs
+        | Fable.Nullable(genArg, true) -> genericTypeInfo "option" [ genArg ]
+        | Fable.Nullable(genArg, false) -> transformTypeInfoFor purpose com ctx r genMap genArg
         | Fable.Option(genArg, _) -> genericTypeInfo "option" [ genArg ]
         | Fable.Array(genArg, _) -> genericTypeInfo "array" [ genArg ]
         | Fable.List genArg -> genericTypeInfo "list" [ genArg ]
@@ -396,7 +402,10 @@ module Reflection =
                     |> List.toArray
 
                 match com.GetEntity(entRef) with
-                | Patterns.Try (Util.tryFindAnyEntAttribute [ Atts.stringEnum; Atts.erase; Atts.tsTaggedUnion ]) (att, _) as ent ->
+                | Patterns.Try (Util.tryFindAnyEntAttribute [ Atts.stringEnum
+                                                              Atts.erase
+                                                              Atts.tsTaggedUnion
+                                                              Atts.pojoDefinedByConsArgs ]) (att, _) as ent ->
                     match att with
                     | Atts.stringEnum -> primitiveTypeInfo "string"
                     | Atts.erase ->
@@ -488,6 +497,7 @@ module Reflection =
         | Fable.MetaType -> jsInstanceof (libValue com ctx "Reflection" "TypeInfo") expr
         | Fable.Option _ -> warnAndEvalToFalse "options" // TODO
         | Fable.GenericParam _ -> warnAndEvalToFalse "generic parameters"
+        | Fable.Nullable(genArg, _isStruct) -> transformTypeTest com ctx range expr genArg
         | Fable.DeclaredType(ent, genArgs) ->
             match ent.FullName with
             | Types.idisposable ->
@@ -507,7 +517,7 @@ module Reflection =
                 |> libCall com ctx range "Util" "isArrayLike" []
             | Types.exception_ ->
                 [ com.TransformAsExpr(ctx, expr) ]
-                |> libCall com ctx range "Types" "isException" []
+                |> libCall com ctx range "Util" "isException" []
             | _ ->
                 match com.GetEntity(ent) with
                 | Patterns.Try (Util.tryFindAnyEntAttribute [ Atts.stringEnum; Atts.erase; Atts.tsTaggedUnion ]) (att, _) as ent ->
@@ -602,8 +612,9 @@ module Annotation =
         | Fable.Regex -> makeAliasTypeAnnotation com ctx "RegExp"
         | Fable.Number(BigInt, _) -> makeAliasTypeAnnotation com ctx "bigint"
         | Fable.Number(kind, _) -> makeNumericTypeAnnotation com ctx kind
-        | Fable.Option(genArg, _) -> makeOptionTypeAnnotation com ctx genArg
-        | Fable.Tuple(genArgs, _) -> makeTupleTypeAnnotation com ctx genArgs
+        | Fable.Nullable(genArg, isStruct) -> makeNullableTypeAnnotation com ctx isStruct genArg
+        | Fable.Option(genArg, isStruct) -> makeOptionTypeAnnotation com ctx isStruct genArg
+        | Fable.Tuple(genArgs, isStruct) -> makeTupleTypeAnnotation com ctx isStruct genArgs
         | Fable.Array(genArg, kind) -> makeArrayTypeAnnotation com ctx genArg kind
         | Fable.List genArg -> makeListTypeAnnotation com ctx genArg
         | Fable.GenericParam(name = name) -> makeAliasTypeAnnotation com ctx name
@@ -685,13 +696,16 @@ module Annotation =
         let typeName = getNumberKindName kind
         makeFableLibImportTypeAnnotation com ctx [] moduleName typeName
 
-    let makeNullableTypeAnnotation com ctx genArg =
-        makeFableLibImportTypeAnnotation com ctx [ genArg ] "Option" "Nullable"
+    let makeNullableTypeAnnotation com ctx isStruct genArg =
+        if isStruct then
+            makeFableLibImportTypeAnnotation com ctx [ genArg ] "Util" "Nullable"
+        else
+            makeTypeAnnotation com ctx genArg // nullable reference types are erased
 
-    let makeOptionTypeAnnotation com ctx genArg =
+    let makeOptionTypeAnnotation com ctx _isStruct genArg =
         makeFableLibImportTypeAnnotation com ctx [ genArg ] "Option" "Option"
 
-    let makeTupleTypeAnnotation com ctx genArgs =
+    let makeTupleTypeAnnotation com ctx _isStruct genArgs =
         List.map (makeTypeAnnotation com ctx) genArgs
         |> List.toArray
         |> TupleTypeAnnotation
@@ -723,7 +737,7 @@ module Annotation =
         | Replacements.Util.BclHashSet key -> makeFableLibImportTypeAnnotation com ctx [ key ] "Util" "ISet"
         | Replacements.Util.BclDictionary(key, value) ->
             makeFableLibImportTypeAnnotation com ctx [ key; value ] "Util" "IMap"
-        | Replacements.Util.BclKeyValuePair(key, value) -> makeTupleTypeAnnotation com ctx [ key; value ]
+        | Replacements.Util.BclKeyValuePair(key, value) -> makeTupleTypeAnnotation com ctx true [ key; value ]
         | Replacements.Util.FSharpSet key -> makeFableLibImportTypeAnnotation com ctx [ key ] "Set" "FSharpSet"
         | Replacements.Util.FSharpMap(key, value) ->
             makeFableLibImportTypeAnnotation com ctx [ key; value ] "Map" "FSharpMap"
@@ -874,8 +888,6 @@ module Annotation =
 
     let makeEntityTypeAnnotation com ctx genArgs (ent: Fable.Entity) =
         match genArgs, ent with
-        | [ genArg ], EntFullName Types.nullable -> makeNullableTypeAnnotation com ctx genArg
-
         | _, Patterns.Try (tryNativeOrFableLibraryInterface com ctx genArgs) ta -> ta
 
         | _, Patterns.Try (Lib.tryJsConstructorFor Annotation com ctx) entRef ->
@@ -1031,7 +1043,7 @@ module Util =
     let getUniqueNameInRootScope (ctx: Context) name =
         let name =
             (name, Naming.NoMemberPart)
-            ||> Naming.sanitizeIdent (fun name ->
+            ||> Naming.sanitizeJsIdent (fun name ->
                 ctx.UsedNames.RootScope.Contains(name)
                 || ctx.UsedNames.DeclarationScopes.Contains(name)
             )
@@ -1042,7 +1054,7 @@ module Util =
     let getUniqueNameInDeclarationScope (ctx: Context) name =
         let name =
             (name, Naming.NoMemberPart)
-            ||> Naming.sanitizeIdent (fun name ->
+            ||> Naming.sanitizeJsIdent (fun name ->
                 ctx.UsedNames.RootScope.Contains(name)
                 || ctx.UsedNames.CurrentDeclarationScope.Contains(name)
             )
@@ -1140,7 +1152,7 @@ module Util =
         | "ToString" -> Expression.identifier ("toString"), false
         | n when n.StartsWith("Symbol.", StringComparison.Ordinal) ->
             Expression.memberExpression (Expression.identifier ("Symbol"), Expression.identifier (n[7..]), false), true
-        | n when Naming.hasIdentForbiddenChars n -> Expression.stringLiteral (n), computeStrings
+        | n when Naming.hasIdentForbiddenChars Naming.isJsIdentChar n -> Expression.stringLiteral (n), computeStrings
         | n -> Expression.identifier (n |> sanitizeMemberName), false
 
     let memberFromName (memberName: string) : Expression * bool =
@@ -1232,6 +1244,15 @@ module Util =
             |> Seq.distinctBy (fun (id, _) -> id.Name)
             |> Seq.map (fun (id, value) ->
                 let ta, tp = makeTypeAnnotationWithParametersIfTypeScript com ctx id.Type value
+
+                let value =
+                    if com.IsTypeScript && Option.isNone value then
+                        // initialize un-initialized variables to "undefined as any"
+                        let expr = Expression.Undefined(?loc = None)
+                        let ta = makeTypeAnnotation com ctx Fable.Type.Any
+                        AsExpression(expr, ta) |> Some
+                    else
+                        value
 
                 VariableDeclarator.variableDeclarator (
                     id.Name,
@@ -1372,6 +1393,29 @@ module Util =
 
         let parameters = List.concat info.CurriedParameterGroups
 
+        let argsWithParams (args: Fable.Ident list) =
+            List.zip args parameters
+            |> List.map (fun (a, p) ->
+                match p.Name with
+                | Some name when p.IsNamed && a.Name <> name ->
+                    $"Argument {name} is marked as named but conflicts with another name in scope"
+                    |> addWarning com [] a.Range
+                | _ -> ()
+
+                let a =
+                    if p.IsOptional then
+                        { a with Type = unwrapOptionalType a.Type }
+                    else
+                        a
+
+                a,
+                ParameterFlags(
+                    isNamed = p.IsNamed,
+                    isOptional = (p.IsOptional && com.IsTypeScript),
+                    ?defVal = (p.DefaultValue |> Option.map (transformAsExpr com ctx))
+                )
+            )
+
         let argsWithFlags =
             match args with
             | [] -> []
@@ -1381,29 +1425,9 @@ module Util =
                 let args = args |> List.map (fun a -> a, ParameterFlags())
                 args @ [ lastArg, ParameterFlags(isSpread = true) ]
 
-            | args when List.sameLength args parameters ->
-                List.zip args parameters
-                |> List.map (fun (a, p) ->
-                    match p.Name with
-                    | Some name when p.IsNamed && a.Name <> name ->
-                        $"Argument {name} is marked as named but conflicts with another name in scope"
-                        |> addWarning com [] a.Range
-                    | _ -> ()
-
-                    let a =
-                        if p.IsOptional then
-                            { a with Type = unwrapOptionalType a.Type }
-                        else
-                            a
-
-                    a,
-                    ParameterFlags(
-                        isNamed = p.IsNamed,
-                        isOptional = (p.IsOptional && com.IsTypeScript),
-                        ?defVal = (p.DefaultValue |> Option.map (transformAsExpr com ctx))
-                    )
-                )
-
+            | thisArg :: args when info.IsInstance && List.sameLength args parameters ->
+                (thisArg, ParameterFlags()) :: (argsWithParams args)
+            | args when List.sameLength args parameters -> argsWithParams args
             | _ -> args |> List.map (fun a -> a, ParameterFlags())
 
         let args, body, returnType, typeParamDecl =
@@ -1569,7 +1593,7 @@ module Util =
             if com.IsTypeScript then
                 match List.tryItem tag ent.UnionCases with
                 | Some case ->
-                    match tryJsConstructorWithSuffix com ctx ent ("_" + case.Name) with
+                    match tryJsConstructorWithSuffix com ctx ent ("_" + sanitizeName case.Name) with
                     | Some helperRef ->
                         let typeParams = makeTypeParamInstantiation com ctx genArgs
 
@@ -1724,8 +1748,7 @@ module Util =
                 | TypeScript, None, Fable.IdentExpr id -> makeTypeAnnotation com ctx id.Type |> SuperType
                 | _ -> transformAsExpr com ctx baseRef |> SuperExpression
 
-            let args =
-                info.MemberRef |> Option.bind com.TryGetMember |> transformCallArgs com ctx info
+            let args = transformCallArgs com ctx info
 
             Some(baseExpr, args)
         | Some(Fable.Value _), Some baseType ->
@@ -1760,7 +1783,7 @@ module Util =
             ||> List.fold (fun compileAsClass (memb, info) ->
                 compileAsClass
                 || (not memb.IsMangled
-                    && (info.IsSetter || (info.IsGetter && canHaveSideEffects memb.Body)))
+                    && (info.IsSetter || (info.IsGetter && canHaveSideEffects com memb.Body)))
             )
 
         let members =
@@ -1878,17 +1901,12 @@ module Util =
 
             Expression.newExpression (classExpr, [||])
 
-    let transformCallArgs
-        (com: IBabelCompiler)
-        ctx
-        (callInfo: Fable.CallInfo)
-        (memberInfo: Fable.MemberFunctionOrValue option)
-        =
+    let transformCallArgsWithNamedArgs (com: IBabelCompiler) ctx (callInfo: Fable.CallInfo) =
+        let memberInfo = callInfo.MemberRef |> Option.bind com.TryGetMember
+        let paramsInfo = Option.map getParamsInfo memberInfo
 
         let args =
-            FSharp2Fable.Util.dropUnitCallArg callInfo.Args callInfo.SignatureArgTypes
-
-        let paramsInfo = Option.map getParamsInfo memberInfo
+            FSharp2Fable.Util.dropUnitCallArg com callInfo.Args callInfo.SignatureArgTypes callInfo.MemberRef
 
         let args =
             match paramsInfo with
@@ -1906,26 +1924,12 @@ module Util =
             paramsInfo
             |> Option.map (splitNamedArgs args)
             |> function
-                | None -> args, None
-                | Some(args, []) ->
-                    // Detect if the method has a ParamObject attribute
-                    // If yes and no argument is passed, pass an empty object
-                    // See https://github.com/fable-compiler/Fable/issues/3480
-                    match callInfo.MemberRef with
-                    | Some(Fable.MemberRef(_, info)) ->
-                        let hasParamObjectAttribute =
-                            info.AttributeFullNames
-                            |> List.tryFind (fun attr -> attr = Atts.paramObject)
-                            |> Option.isSome
-
-                        if hasParamObjectAttribute then
-                            args, Some(makeJsObject [])
-                        else
-                            args, None
-                    | _ ->
-                        // Here detect empty named args
-                        args, None
-                | Some(args, namedArgs) ->
+                | None
+                | Some(_, None) -> args, None
+                // If there are named arguments but none is passed, pass an empty object
+                // See https://github.com/fable-compiler/Fable/issues/3480
+                | Some(args, Some []) -> args, Some(makeJsObject [])
+                | Some(args, Some namedArgs) ->
                     let objArg =
                         namedArgs
                         |> List.choose (fun (p, v) ->
@@ -1958,9 +1962,12 @@ module Util =
             else
                 List.map (fun e -> com.TransformAsExpr(ctx, e)) args
 
-        match objArg with
-        | None -> args
-        | Some objArg -> args @ [ objArg ]
+        args, objArg
+
+    let transformCallArgs com ctx callInfo =
+        match transformCallArgsWithNamedArgs com ctx callInfo with
+        | args, None -> args
+        | args, Some objArg -> args @ [ objArg ]
 
     let resolveExpr t strategy babelExpr : Statement =
         match strategy with
@@ -1982,6 +1989,9 @@ module Util =
                 | Fable.Value(Fable.Null _, _), e
                 | e, Fable.Value(Fable.Null _, _) ->
                     com.TransformAsExpr(ctx, e) |> makeNullCheck range (op = BinaryEqual)
+                | ExprType(Fable.Nullable _), ExprType(Fable.Nullable _) ->
+                    Replacements.Util.Helper.LibCall(com, "Util", "equals", Fable.Boolean, [ e1; e2 ], ?loc = range)
+                    |> transformAsExpr com ctx
                 | ExprType(Fable.MetaType), _ ->
                     let e =
                         Replacements.Util.Helper.LibCall(
@@ -2010,26 +2020,30 @@ module Util =
             Expression.logicalExpression (left, op, right, ?loc = range)
 
     let transformEmit (com: IBabelCompiler) ctx range (info: Fable.EmitInfo) =
-        let macro = stripImports com ctx range info.Macro
-        let info = info.CallInfo
+        match info.CallInfo.Tags with
+        | Fable.Tags.Contains "topDirectiveProloge" ->
+            com.SaveTopDirectivePrologue(info.Macro)
+            // Return empty sequence expression so it can be erased at print time
+            Expression.sequenceExpression ([||])
+        | _ ->
+            let macro = stripImports com ctx range info.Macro
+            let info = info.CallInfo
 
-        let thisArg =
-            info.ThisArg
-            |> Option.map (fun e -> com.TransformAsExpr(ctx, e))
-            |> Option.toList
+            let thisArg =
+                info.ThisArg
+                |> Option.map (fun e -> com.TransformAsExpr(ctx, e))
+                |> Option.toList
 
-        info.MemberRef
-        |> Option.bind com.TryGetMember
-        |> transformCallArgs com ctx info
-        |> List.append thisArg
-        |> emitExpression range macro
+            transformCallArgs com ctx info
+            |> List.append thisArg
+            |> emitExpression range macro
 
     let transformJsxProps (com: IBabelCompiler) props =
         (Some([], []), props)
         ||> List.fold (fun propsAndChildren prop ->
             match propsAndChildren, prop with
             | None, _ -> None
-            | Some(props, children), Fable.Value(Fable.NewTuple([ StringConst key; value ], _), _) ->
+            | Some(props, children), MaybeCasted(Fable.Value(Fable.NewTuple([ StringConst key; value ], _), _)) ->
                 if key = "children" then
                     match value with
                     | Replacements.Util.ArrayOrListLiteral(children, _) -> Some(props, children)
@@ -2041,6 +2055,112 @@ module Util =
 
                 None
         )
+
+    module Jsx =
+
+        (***
+
+For JSX, we want to rewrite the default output in order to remove all the code coming from list CEs
+
+By default, this code
+
+```fs
+Html.div
+    [
+        yield! [
+            Html.div "Test 1"
+            Html.div "Test 2"
+        ]
+    ]
+```
+
+generates something like
+
+```jsx
+<div>
+    {toList(delay(() => [<div>
+        Test 1
+    </div>, <div>
+        Test 2
+    </div>]))}
+</div>;
+```
+
+but thanks to the optimisation done below we get
+
+```jsx
+<div>
+    <div>
+        Test 1
+    </div>
+    <div>
+        Test 2
+    </div>
+</div>
+```
+
+        Initial implementation of this optimiser comes from https://github.com/shayanhabibi/Partas.Solid/blob/master/Partas.Solid.FablePlugin/Plugin.fs
+
+        ***)
+
+        // Check if the provided expression is equal to the expected identiferText (as a string)
+        let rec (|IdentifierIs|_|) (identifierText: string) expression =
+            match expression with
+            | Expression.Identifier(Identifier(currentCallerText, _)) when identifierText = currentCallerText -> Some()
+            | _ -> None
+
+        // Make it easy to check if we are calling the expected function
+        and (|CalledExpression|_|) (callerText: string) value =
+            match value with
+            | CallExpression(IdentifierIs callerText, UnrollerFromArray exprs, _, _) -> Some exprs
+            | _ -> None
+
+        and (|UnrollerFromSingleton|) (expr: Expression) : Expression list =
+            [ expr ]
+            |> function
+                | Unroller exprs -> exprs
+
+        and (|UnrollerFromArray|) (arrayExpr: Expression array) : Expression list =
+            arrayExpr
+            |> Array.toList
+            |> function
+                | Unroller exprs -> exprs
+
+        and (|Unroller|): Expression list -> Expression list =
+            function
+            | [] -> []
+            | expr :: Unroller rest ->
+                match expr with
+                | CalledExpression "toList" exprs -> exprs @ rest
+                | CalledExpression "delay" exprs -> exprs @ rest
+                | ArrowFunctionExpression([||],
+                                          BlockStatement [| ReturnStatement(ArrayExpression(UnrollerFromArray exprs, _),
+                                                                            _) |],
+                                          _,
+                                          _,
+                                          _) -> exprs @ rest
+                | ArrowFunctionExpression([||],
+                                          BlockStatement [| ReturnStatement(UnrollerFromSingleton exprs, _) |],
+                                          _,
+                                          _,
+                                          _) -> exprs @ rest
+                | CalledExpression "append" exprs -> exprs @ rest
+                | CalledExpression "singleton" exprs -> exprs @ rest
+                | CalledExpression "empty" _ -> [ Expression.nullLiteral () ] @ rest
+                // Note: Should we guard this unwrapper by checking that all the elements in the array are JsxElements?
+                | ArrayExpression(UnrollerFromArray exprs, _) -> exprs @ rest
+                | ConditionalExpression(testExpr, UnrollerFromSingleton thenExprs, UnrollerFromSingleton elseExprs, loc) ->
+                    ConditionalExpression(
+                        testExpr,
+                        SequenceExpression(thenExprs |> List.toArray, None),
+                        SequenceExpression(elseExprs |> List.toArray, None),
+                        loc
+                    )
+                    :: rest
+                | expr ->
+                    // Tips 💡
+                    // If a pattern is not optimized, you can put a debug point here to capture it
+                    expr :: rest
 
     let transformJsxEl (com: IBabelCompiler) ctx componentOrTag props =
         match transformJsxProps com props with
@@ -2055,6 +2175,12 @@ module Util =
                     // Because of call optimizations, it may happen a list has been transformed to an array in JS
                     | [ ArrayExpression(children, _) ] -> Array.toList children
                     | children -> children
+                // Optimize AST, removing F# CEs from the output (see documentation in the JSX module)
+                |> List.map (fun child ->
+                    match child with
+                    | Jsx.UnrollerFromSingleton expr -> expr
+                )
+                |> List.concat
 
             let props =
                 props |> List.rev |> List.map (fun (k, v) -> k, transformAsExpr com ctx v)
@@ -2146,16 +2272,36 @@ module Util =
                 transformJsxCall com ctx callee callInfo.Args memberInfo
             | memberInfo ->
                 let callee = com.TransformAsExpr(ctx, callee)
-                let args = transformCallArgs com ctx callInfo memberInfo
+
+                let nonNamedArgs, namedArgs = transformCallArgsWithNamedArgs com ctx callInfo
+
+                let args = nonNamedArgs @ Option.toList namedArgs
 
                 match callInfo.ThisArg with
                 | None when List.contains "new" callInfo.Tags ->
-                    let typeParamInst =
-                        match typ with
-                        | Fable.DeclaredType(_entRef, genArgs) -> makeTypeParamInstantiationIfTypeScript com ctx genArgs
+                    let pojo =
+                        match nonNamedArgs, namedArgs, memberInfo with
+                        | [], Some namedArgs, Some memberInfo ->
+                            match memberInfo.DeclaringEntity |> Option.bind com.TryGetEntity with
+                            | Some e when FSharp2Fable.Util.isPojoDefinedByConsArgsEntity e -> Some namedArgs
+                            | _ -> None
                         | _ -> None
 
-                    Expression.newExpression (callee, List.toArray args, ?typeArguments = typeParamInst, ?loc = range)
+                    match pojo with
+                    | Some pojo -> pojo
+                    | None ->
+                        let typeParamInst =
+                            match typ with
+                            | Fable.DeclaredType(_entRef, genArgs) ->
+                                makeTypeParamInstantiationIfTypeScript com ctx genArgs
+                            | _ -> None
+
+                        Expression.newExpression (
+                            callee,
+                            List.toArray args,
+                            ?typeArguments = typeParamInst,
+                            ?loc = range
+                        )
                 | None -> callFunction com ctx range callee callInfo.GenericArgs args
                 | Some(TransformExpr com ctx thisArg) ->
                     callFunction com ctx range callee callInfo.GenericArgs (thisArg :: args)
@@ -2207,6 +2353,27 @@ module Util =
     // in a lambda to isolate its variable context
     let transformBlock (com: IBabelCompiler) ctx ret expr : BlockStatement =
         com.TransformAsStatements(ctx, ret, expr) |> BlockStatement
+
+    let transformBlockWithVarHoisting (com: IBabelCompiler) ctx ret expr : BlockStatement =
+        let declaredVars = ResizeArray()
+
+        let ctx =
+            { ctx with
+                HoistVars =
+                    fun ids ->
+                        declaredVars.AddRange(ids)
+                        true
+            }
+
+        let body = transformBlock com ctx ret expr
+
+        if declaredVars.Count = 0 then
+            body
+        else
+            let varDeclStatement =
+                declaredVars |> Seq.map (fun v -> v, None) |> multiVarDeclaration com ctx Let
+
+            BlockStatement(Array.append [| varDeclStatement |] body.Body)
 
     let transformTryCatch com ctx r returnStrategy (body, catch, finalizer) =
         // try .. catch statements cannot be tail call optimized
@@ -2335,7 +2502,8 @@ module Util =
                 getExpr range (getExpr None expr (Expression.stringLiteral ("fields"))) (ofInt info.FieldIndex)
 
             if com.IsTypeScript then
-                AsExpression(expr, makeTypeAnnotation com ctx Fable.Type.Any)
+                let ta = FableTransforms.uncurryType typ |> makeTypeAnnotation com ctx
+                AsExpression(expr, ta)
             else
                 expr
 
@@ -2504,7 +2672,7 @@ module Util =
             defaultCase |> Option.map (transformAsStatements com ctx returnStrategy)
 
         match cases, defaultCase with
-        | [||], Some defaultCase when not (canHaveSideEffects evalExpr) -> defaultCase
+        | [||], Some defaultCase when not (canHaveSideEffects com evalExpr) -> defaultCase
         | cases, Some defaultCase ->
             let cases =
                 Array.append
@@ -2532,7 +2700,7 @@ module Util =
             let bindings, replacements =
                 (([], Map.empty), identsAndValues)
                 ||> List.fold (fun (bindings, replacements) (ident, expr) ->
-                    if canHaveSideEffects expr then
+                    if canHaveSideEffects com expr then
                         (ident, expr) :: bindings, replacements
                     else
                         bindings, Map.add ident.Name expr replacements
@@ -3053,9 +3221,10 @@ module Util =
             transformDecisionTreeSuccessAsStatements com ctx returnStrategy idx boundValues
 
         | Fable.WhileLoop(TransformExpr com ctx guard, body, range) ->
-            [|
-                Statement.whileStatement (guard, transformBlock com ctx None body, ?loc = range)
-            |]
+            // Hoist vars within the loop so if a closure captures the variable
+            // it doesn't change in the next iteration, see #4031
+            let body = transformBlockWithVarHoisting com ctx None body
+            [| Statement.whileStatement (guard, body, ?loc = range) |]
 
         | Fable.ForLoop(var, TransformExpr com ctx start, TransformExpr com ctx limit, body, isUp, range) ->
             let op1, op2 =
@@ -3066,7 +3235,9 @@ module Util =
 
             [|
                 Statement.forStatement (
-                    transformBlock com ctx None body,
+                    // Hoist vars within the loop so if a closure captures the variable
+                    // it doesn't change in the next iteration, see #4031
+                    transformBlockWithVarHoisting com ctx None body,
                     VariableDeclaration.variableDeclaration (
                         Let,
                         var.Name,
@@ -3084,26 +3255,21 @@ module Util =
             Option.map (fun name -> NamedTailCallOpportunity(com, ctx, name, args) :> ITailCallOpportunity) name
 
         let args = FSharp2Fable.Util.discardUnitArg args
-        let declaredVars = ResizeArray()
         let mutable isTailCallOptimized = false
 
         let ctx =
             { ctx with
                 TailCallOpportunity = tailcallChance
-                HoistVars =
-                    fun ids ->
-                        declaredVars.AddRange(ids)
-                        true
                 OptimizeTailCall = fun () -> isTailCallOptimized <- true
             }
 
-        let body =
+        let returnStrategy =
             if body.Type = Fable.Unit then
-                transformBlock com ctx (Some ReturnUnit) body
-            elif isJsStatement ctx (Option.isSome tailcallChance) body then
-                transformBlock com ctx (Some Return) body
+                ReturnUnit
             else
-                transformAsExpr com ctx body |> wrapExprInBlockWithReturn
+                Return
+
+        let body = transformBlockWithVarHoisting com ctx (Some returnStrategy) body
 
         let args, body =
             match isTailCallOptimized, tailcallChance with
@@ -3142,15 +3308,6 @@ module Util =
                     Parameter.parameter (a.Name, ?typeAnnotation = ta)
                 ),
                 body
-
-        let body =
-            if declaredVars.Count = 0 then
-                body
-            else
-                let varDeclStatement =
-                    declaredVars |> Seq.map (fun v -> v, None) |> multiVarDeclaration com ctx Let
-
-                BlockStatement(Array.append [| varDeclStatement |] body.Body)
 
         args |> List.toArray, body
 
@@ -3207,7 +3364,7 @@ module Util =
         |> asModuleDeclaration info.IsPublic
 
     let sanitizeName fieldName =
-        fieldName |> Naming.sanitizeIdentForbiddenChars |> Naming.checkJsKeywords
+        fieldName |> Naming.sanitizeJsIdentForbiddenChars |> Naming.checkJsKeywords
 
     let getEntityFieldsAsIdents (ent: Fable.Entity) =
         ent.FSharpFields
@@ -3373,22 +3530,9 @@ module Util =
     let tryFindAnyEntAttribute fullNames (ent: Fable.Entity) : (string * obj list) option =
         tryFindAnyAttribute fullNames ent.Attributes
 
-    let transformModuleFunction
-        (com: IBabelCompiler)
-        ctx
-        (info: Fable.MemberFunctionOrValue)
-        (membName: string)
-        (args: Fable.Ident list)
-        body
-        =
-        let isJsx = hasAttribute Atts.jsxComponent info.Attributes
-
+    let transformModuleFunction com ctx (info: Fable.MemberFunctionOrValue) membName (args: Fable.Ident list) body =
         let args, body =
-            match args with
-            | [] -> args, body
-            | [ arg ] when arg.Type = Fable.Unit -> [], body
-            | _ when not isJsx -> args, body
-            | _ ->
+            if info.Attributes |> hasAttribute Atts.jsxComponent then
                 // SolidJS requires values being accessed directly from the props object for reactivity to work properly
                 // https://www.solidjs.com/guides/rendering#props
                 let propsArg = makeIdent "$props"
@@ -3400,6 +3544,8 @@ module Util =
                     |> Map
 
                 [ propsArg ], FableTransforms.replaceValues replacements body
+            else
+                args, body
 
         let args, body, returnType, typeParamDecl =
             getMemberArgsAndBody com ctx (NonAttached membName) None info args body
@@ -3695,7 +3841,7 @@ module Util =
                                 )
                             )
 
-                        let fnId = entName + "_" + case.Name |> Identifier.identifier
+                        let fnId = entName + "_" + sanitizeName case.Name |> Identifier.identifier
                         // Don't use return type, TypeScript will infer it and sometimes we want to use
                         // the actual constructor type in case it implements an interface
                         // let returnType = AliasTypeAnnotation(Identifier.identifier(entName + UnionHelpers.UNION_SUFFIX), entParamsInst)
@@ -3783,7 +3929,7 @@ module Util =
 
         declareType com ctx ent decl.Name args body baseExpr classMembers
 
-    let transformParamObjectClassPatternToInterface
+    let transformPojoDefinedByConsArgsToInterface
         (com: IBabelCompiler)
         ctx
         (ent: Fable.Entity)
@@ -4214,11 +4360,11 @@ module Util =
                 else
                     []
             | ent ->
-                if
-                    Compiler.Language = TypeScript
-                    && FSharp2Fable.Helpers.isParamObjectClassPattern ent
-                then
-                    transformParamObjectClassPatternToInterface com ctx ent decl
+                if FSharp2Fable.Util.isPojoDefinedByConsArgsEntity ent then
+                    if com.Options.Language = TypeScript then
+                        transformPojoDefinedByConsArgsToInterface com ctx ent decl
+                    else
+                        []
                 else
 
                     let classMembers =
@@ -4299,6 +4445,11 @@ module Util =
         )
         |> fun staticImports -> [ yield! staticImports; yield! statefulImports ]
 
+    let transformDirectivesPrologue (directives: string seq) =
+        directives
+        |> Seq.map (DirectivePrologue >> DirectivePrologueDeclaration)
+        |> Seq.toList
+
     let getIdentForImport (com: IBabelCompiler) (ctx: Context) noMangle (path: string) (selector: string) =
         if System.String.IsNullOrEmpty selector then
             selector, None
@@ -4337,6 +4488,7 @@ module Compiler =
     type BabelCompiler(com: Compiler) =
         let onlyOnceWarnings = HashSet<string>()
         let imports = Dictionary<string, Import>()
+        let topDirectivesPrologue = HashSet<string>()
         let isTypeScript = com.Options.Language = TypeScript
 
         interface IBabelCompiler with
@@ -4387,6 +4539,11 @@ module Compiler =
             member bcom.TransformImport(ctx, selector, path) =
                 transformImport bcom ctx None selector path
 
+            member _.SaveTopDirectivePrologue(text: string) =
+                topDirectivesPrologue.Add text |> ignore
+
+            member _.GetAllAllTopDirectivesPrologue() = topDirectivesPrologue |> Seq.cast
+
         interface Compiler with
             member _.Options = com.Options
             member _.Plugins = com.Plugins
@@ -4395,6 +4552,7 @@ module Compiler =
             member _.OutputDir = com.OutputDir
             member _.OutputType = com.OutputType
             member _.ProjectFile = com.ProjectFile
+            member _.ProjectOptions = com.ProjectOptions
             member _.SourceFiles = com.SourceFiles
             member _.IncrementCounter() = com.IncrementCounter()
 
@@ -4445,6 +4603,9 @@ module Compiler =
 
         let rootDecls = List.collect (transformDeclaration com ctx) file.Declarations
 
+        let topDirectivesPrologue =
+            com.GetAllAllTopDirectivesPrologue() |> transformDirectivesPrologue
+
         let importDecls = com.GetAllImports() |> transformImports
-        let body = importDecls @ rootDecls |> List.toArray
+        let body = topDirectivesPrologue @ importDecls @ rootDecls |> List.toArray
         Program(body)

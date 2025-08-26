@@ -50,7 +50,7 @@ type NameProp =
 //     | Names of NameProp array
 //     | [<Erase>] Custom of key:string * value:obj
 
-[<Global("Array")>]
+[<Global("list")>]
 type PyArray =
     [<Emit("$0.append($1)")>]
     abstract push: item: obj -> unit
@@ -70,6 +70,78 @@ type ClassWithAttachments(v, sign) =
     static member GreetingFormat = "Hello {0}"
     static member GetGrettingEnding(times, sign) = String.replicate times sign
     member _.WithSecretSauce(food) = $"{food} with lots of {secretSauce}"
+
+[<Erase>]
+type ErasedUnion =
+    | ErasedInt of int
+    | ErasedString of string
+    member this.SayHi() =
+        match this with
+        | ErasedInt i -> sprintf "Hi %i time(s)!" i
+        | ErasedString s -> sprintf "Hi %s!" s
+
+[<Erase>]
+type ErasedUnionWithMultipleFields =
+    | ErasedUnionWithMultipleFields of string * int
+
+[<Erase; RequireQualifiedAccess>]
+type MyErasedUnion2 =
+    | Foo
+    | Ohmy
+    | Bar of float
+    | Baz of int[]
+
+[<Erase(CaseRules.KebabCase); RequireQualifiedAccess>]
+type MyErasedUnion3 =
+    | FooBar
+    | OhMyDear
+    | AnotherNumber of int
+
+[<StringEnum>]
+type MyStrings =
+    | Vertical
+    | [<CompiledName("Horizontal")>] Horizontal
+
+[<StringEnum(CaseRules.SnakeCase); RequireQualifiedAccess>]
+type UserInfo =
+    | UserLoginCount
+
+[<StringEnum(CaseRules.SnakeCaseAllCaps); RequireQualifiedAccess>]
+type UserInfo2 =
+    | UserLoginCount
+
+[<StringEnum(CaseRules.KebabCase); RequireQualifiedAccess>]
+type MyCssOptions =
+    | ContentBox
+    | BorderBox
+
+[<StringEnum(CaseRules.LowerAll); RequireQualifiedAccess>]
+type LowerAllOptions =
+    | ContentBox
+    | BorderBox
+
+type Field = OldPassword | NewPassword | ConfirmPassword
+    with member this.Kind =
+            match this with
+            | OldPassword -> "Old"
+            | NewPassword -> "New"
+            | ConfirmPassword -> "Confirm"
+         static member Default = NewPassword
+
+type MyInterface =
+    abstract foo: int
+    abstract bar: string
+
+// Test interface for createEmpty functionality
+type IUser =
+    abstract Name: string with get, set
+    abstract Age: int with get, set
+
+let validatePassword = function
+    | OldPassword -> "op"
+    | NewPassword -> "np"
+    | ConfirmPassword -> "cp"
+
 
 type ClassWithAttachmentsChild() =
     inherit ClassWithAttachments(3, Some "?")
@@ -135,6 +207,47 @@ let ``test Decorators work`` () =
         "LOG2: called 2 time(s)!"
     ]
 
+[<Fact>]
+let ``test Erased types can have members`` () =
+    let x = ErasedString "Patrick"
+    x.SayHi() |> equal "Hi Patrick!"
+
+[<Fact>]
+let ``test Erased unions with multiple fields work`` () =
+    let gimme (ErasedUnionWithMultipleFields(s, i)) =
+        sprintf "Gimme %i %ss" i s
+    ("apple", 5)
+    |> ErasedUnionWithMultipleFields
+    |> gimme
+    |> equal "Gimme 5 apples"
+
+[<Fact>]
+let ``test Erased unions can have cases representing literal strings`` () =
+    let getValue = function
+        | MyErasedUnion2.Foo -> 5
+        | MyErasedUnion2.Ohmy -> 0
+        | MyErasedUnion2.Bar f -> int f
+        | MyErasedUnion2.Baz xs -> Array.sum xs
+
+    MyErasedUnion2.Bar 4.4 |> getValue |> equal 4
+    MyErasedUnion2.Ohmy |> getValue |> equal 0
+    MyErasedUnion2.Baz [|1;2;3|] |> getValue |> equal 6
+    MyErasedUnion2.Foo |> getValue |> equal 5
+    box MyErasedUnion2.Foo |> equal (box "foo")
+    box MyErasedUnion2.Ohmy |> equal (box "ohmy")
+
+[<Fact>]
+let ``test Erased unions can have case rules`` () =
+    let getValue = function
+        | MyErasedUnion3.FooBar -> 5
+        | MyErasedUnion3.OhMyDear -> 0
+        | MyErasedUnion3.AnotherNumber i -> i
+
+    MyErasedUnion3.AnotherNumber 3 |> getValue |> equal 3
+    MyErasedUnion3.OhMyDear |> getValue |> equal 0
+    MyErasedUnion3.FooBar |> getValue |> equal 5
+    box MyErasedUnion3.OhMyDear |> equal (box "oh-my-dear")
+    box MyErasedUnion3.FooBar |> equal (box "foo-bar")
 
 [<Fact>]
 let ``test emitPyExpr works with parameters`` () =
@@ -163,5 +276,283 @@ let factorial (count : int) : int =
 [<Fact>]
 let ``test emitPyStatement works with parameters`` () =
     factorial 5 |> equal 120
+
+
+type NativeCode =
+    abstract add5: int -> int
+
+[<Fact>]
+let ``test importAll`` () =
+    let nativeCode: NativeCode = importAll "./native_code.py"
+    3 |> nativeCode.add5 |> equal 8
+
+let add5 (x: int): int = importMember "./native_code.py"
+
+[<Fact>]
+let ``test importMember`` () =
+    add5 -1 |> equal 4
+
+    // Cannot use the same name as Fable will mangle the identifier
+    let add7: int -> int = importMember "./native_code.py"
+    add7 12 |> equal 19
+
+    let add5': int -> int = import "add5" "./native_code.py"
+    add5' 12 |> equal 17
+
+    let multiply3 (x: int): int = importMember "./more_native_code.py"
+    multiply3 9 |> equal 27
+
+[<ImportAll("./native_code.py")>]
+let nativeCode: NativeCode = nativeOnly
+
+[<Fact>]
+let ``test ImportAll works with relative paths`` () = // See #3481
+    3 |> nativeCode.add5 |> equal 8
+
+[<Fact>]
+let ``test StringEnum attribute works`` () =
+    Vertical |> unbox |> equal "vertical"
+    Horizontal |> unbox |> equal "Horizontal"
+    Vertical |> string |> equal "vertical"
+    Horizontal |> string |> equal "Horizontal"
+
+[<Fact>]
+let ``test StringEnum works with CaseRules.SnakeCase`` () =
+    UserInfo.UserLoginCount |> unbox |> equal "user_login_count"
+
+[<Fact>]
+let ``test StringEnum works with CaseRules.SnakeCaseAllCaps`` () =
+    UserInfo2.UserLoginCount |> unbox |> equal "USER_LOGIN_COUNT"
+
+[<Fact>]
+let ``test StringEnum works with CaseRules.KebabCase`` () =
+    MyCssOptions.BorderBox |> unbox |> equal "border-box"
+    MyCssOptions.ContentBox |> unbox |> equal "content-box"
+
+[<Fact>]
+let ``test StringEnum works with CaseRules.LowerAll`` () =
+    let x = LowerAllOptions.ContentBox
+    x |> unbox |> equal "contentbox"
+
+[<Fact>]
+let ``test Pattern matching with StringEnum works`` () =
+    validatePassword NewPassword
+    |> equal "np"
+
+[<Fact>]
+let ``test StringEnums can have members`` () =
+    let x = ConfirmPassword
+    x.Kind |> equal "Confirm"
+
+[<Fact>]
+let ``test StringEnums can have static members`` () =
+    let x = Field.Default
+    validatePassword x |> equal "np"
+
+// Test for ParamObject with EmitMethod issue #3871
+
+[<Erase>]
+type ITestService =
+    [<ParamObject(1)>]
+    [<EmitMethod("process")>]
+    abstract process: data: string * ?verbose:bool -> string
+
+// Create a test implementation that tracks keyword arguments
+[<Emit("""
+class TestService:
+    def process(self, data, **kwargs):
+        return f"processed {data} with {kwargs}"
+""", isStatement=true)>]
+let defineTestService: unit = nativeOnly
+
+defineTestService
+
+[<Emit("TestService()")>]
+let testService: ITestService = nativeOnly
+
+[<Fact>]
+let ``test ParamObject with EmitMethod preserves arguments`` () =
+    // Test that EmitMethod + ParamObject preserves keyword arguments
+    let result = testService.process("test", verbose = true)
+    result.Contains("verbose") |> equal true
+
+// Test for ParamObject with EmitConstructor issue #3871 (continuation of PR #4158)
+
+[<Erase>]
+type ITestProcess =
+    abstract member name: string
+
+[<Erase>]
+type ITestProcessType =
+    [<EmitConstructor; ParamObject>]
+    abstract Create: ?name: string -> ITestProcess
+
+// Create a test class that accepts keyword arguments
+[<Emit("""
+class MockProcess:
+    def __init__(self, **kwargs):
+        self._name = kwargs.get('name', 'default')
+
+    @property
+    def name(self):
+        return self._name
+""", isStatement=true)>]
+let defineTestProcessClass: unit = nativeOnly
+
+defineTestProcessClass
+
+[<Emit("MockProcess")>]
+let TestProcess: ITestProcessType = nativeOnly
+
+[<Fact>]
+let ``test ParamObject with EmitConstructor preserves keyword arguments`` () =
+    // Test that EmitConstructor + ParamObject generates MockProcess(name="worker")
+    // instead of MockProcess() (losing the keyword arguments)
+    let proc = TestProcess.Create(name = "worker")
+    proc.name |> equal "worker"
+
+    // Also test with default parameter (no arguments)
+    let proc2 = TestProcess.Create()
+    proc2.name |> equal "default"
+
+[<Fact>]
+let ``test createEmpty works with interfaces`` () =
+    // Test that createEmpty<T> works with interfaces by creating a SimpleNamespace
+    // that can have properties set dynamically
+    let user = createEmpty<IUser>
+    user.Name <- "Kaladin"
+    user.Age <- 20
+
+    // Verify the properties can be accessed
+    user.Name |> equal "Kaladin"
+    user.Age |> equal 20
+
+// Test for Pydantic compatible classes
+[<Erase>]
+type Field<'T> = 'T
+
+module Field =
+    [<Import("Field", "pydantic")>]
+    [<Emit("$0(frozen=$1)")>]
+    let Frozen (frozen: bool) : Field<'T> = nativeOnly
+
+    [<Import("Field", "pydantic")>]
+    [<Emit("$0(default=$1)")>]
+    let Default(value: 'T) : Field<'T> = nativeOnly
+
+
+[<Import("BaseModel", "pydantic")>]
+type BaseModel () = class end
+
+[<Py.ClassAttributes(style=Py.ClassAttributeStyle.Attributes, init=false)>]
+type PydanticUser(Name: string, Age: bigint, Email: string option, Enabled: bool) =
+    inherit BaseModel()
+    member val Name: string = Field.Frozen(true) with get, set
+    member val Age: bigint = Age with get, set
+    member val Email: string option = None with get, set
+    member val Enabled: bool = Field.Default(false) with get, set
+
+[<Fact>]
+let ``test PydanticUser`` () =
+    let user = PydanticUser(Name = "Test User", Age = 25I, Email = Some "test@example.com", Enabled = true)
+    user.Name |> equal "Test User"
+    user.Age |> equal 25I
+    user.Email |> equal (Some "test@example.com")
+    user.Enabled |> equal true
+
+[<Py.Decorate("dataclasses.dataclass")>]
+[<Py.ClassAttributes(style=Py.ClassAttributeStyle.Attributes, init=false)>]
+type DecoratedUser() =
+    member val Name: string = "" with get, set
+    member val Age: int = 0 with get, set
+
+[<Fact>]
+let ``test simple decorator without parameters`` () =
+    // Test that @dataclass decorator is applied correctly
+    let user = DecoratedUser()
+    user.Name <- "Test User"
+    user.Age <- 25
+
+    user.Name |> equal "Test User"
+    user.Age |> equal 25
+
+[<Py.Decorate("functools.lru_cache", "maxsize=128")>]
+[<Py.ClassAttributes(style=Py.ClassAttributeStyle.Attributes, init=false)>]
+type DecoratedCache() =
+    member val Value: string = "cached" with get, set
+
+[<Fact>]
+let ``test decorator with parameters`` () =
+    // Test that decorator with parameters is applied correctly
+    let cache = DecoratedCache()
+    cache.Value |> equal "cached"
+
+[<Py.Decorate("dataclasses.dataclass")>]
+[<Py.Decorate("functools.total_ordering")>]
+[<Py.ClassAttributes(style=Py.ClassAttributeStyle.Attributes, init=false)>]
+type MultiDecoratedClass() =
+    member val Priority: int = 0 with get, set
+    member val Name: string = "" with get, set
+
+    member this.__lt__(other: MultiDecoratedClass) =
+        this.Priority < other.Priority
+
+[<Fact>]
+let ``test multiple decorators applied in correct order`` () =
+    // Test that multiple decorators are applied bottom-to-top
+    let obj = MultiDecoratedClass()
+    obj.Priority <- 1
+    obj.Name <- "test"
+
+    obj.Priority |> equal 1
+    obj.Name |> equal "test"
+
+[<Py.Decorate("attrs.define", "auto_attribs=True, slots=True")>]
+[<Py.ClassAttributes(style=Py.ClassAttributeStyle.Attributes, init=false)>]
+type AttrsDecoratedClass() =
+    member val Data: string = "attrs_data" with get, set
+    member val Count: int = 42 with get, set
+
+[<Fact>]
+let ``test complex decorator parameters`` () =
+    // Test decorator with complex parameter syntax
+    let obj = AttrsDecoratedClass()
+    obj.Data |> equal "attrs_data"
+    obj.Count |> equal 42
+
+// Test combining Decorate with existing F# features
+
+[<Py.Decorate("dataclasses.dataclass")>]
+[<Py.ClassAttributes(style=Py.ClassAttributeStyle.Attributes, init=false)>]
+type InheritedDecoratedClass() =
+    inherit DecoratedUser()
+    member val Email: string = "" with get, set
+
+[<Fact>]
+let ``test decorator with inheritance`` () =
+    // Test that decorators work with class inheritance
+    let obj = InheritedDecoratedClass()
+    obj.Name <- "Inherited"
+    obj.Age <- 30
+    obj.Email <- "test@example.com"
+
+    obj.Name |> equal "Inherited"
+    obj.Age |> equal 30
+    obj.Email |> equal "test@example.com"
+
+[<Py.ClassAttributes(style=Py.ClassAttributeStyle.Properties, init=true)>]
+type PropertiesUserWithInit(Name: string, Age: bigint, Email: string option, Enabled: bool) =
+    member val Name: string = Name with get, set
+    member val Age: bigint = Age with get, set
+    member val Email: string option = Email with get, set
+    member val Enabled: bool = Enabled with get, set
+
+[<Fact>]
+let ``test PropertiesUserWithInit`` () =
+    let user = PropertiesUserWithInit(Name = "Test User", Age = 25I, Email = Some "test@example.com", Enabled = true)
+    user.Name |> equal "Test User"
+    user.Age |> equal 25I
+    user.Email |> equal (Some "test@example.com")
+    user.Enabled |> equal true
 
 #endif

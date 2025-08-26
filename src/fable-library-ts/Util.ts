@@ -1,3 +1,5 @@
+export type Nullable<T> = T | null | undefined;
+
 // Don't change, this corresponds to DateTime.Kind enum values in .NET
 export const enum DateKind {
   Unspecified = 0,
@@ -46,6 +48,28 @@ export interface ICollection<T> extends Iterable<T> {
   Contains(item: T): boolean;
   CopyTo(array: T[], arrayIndex: number): void;
   Remove(item: T): boolean;
+}
+
+// Exception is intentionally not derived from Error, for performance reasons (see #2160)
+export class Exception {
+  public message: string;
+
+  constructor(public msg?: string) {
+    this.message = msg ?? "";
+  }
+}
+
+export function isException(x: any) {
+  return x instanceof Exception || x instanceof Error;
+}
+
+export function isPromise(x: any) {
+  return x instanceof Promise;
+}
+
+export function ensureErrorOrException(e: any): any {
+  // Exceptionally admitting promises as errors for compatibility with React.suspense (see #3298)
+  return (isException(e) || isPromise(e)) ? e : new Exception(String(e));
 }
 
 export function isArrayLike<T>(x: T | ArrayLike<T> | Iterable<T>): x is T[] {
@@ -136,7 +160,7 @@ export class Enumerator<T> implements IEnumerator<T> {
     return !cur.done;
   }
   public ["System.Collections.IEnumerator.Reset"]() {
-    throw new Error("JS iterators cannot be reset");
+    throw new Exception("JS iterators cannot be reset");
   }
   public Dispose() {
     return;
@@ -228,7 +252,7 @@ export function comparerFromEqualityComparer<T>(comparer: IEqualityComparer<T>):
 
 export function assertEqual<T>(actual: T, expected: T, msg?: string): void {
   if (!equals(actual, expected)) {
-    throw Object.assign(new Error(msg || `Expected: ${expected} - Actual: ${actual}`), {
+    throw Object.assign(new Exception(msg || `Expected: ${expected} - Actual: ${actual}`), {
       actual,
       expected,
     });
@@ -237,7 +261,7 @@ export function assertEqual<T>(actual: T, expected: T, msg?: string): void {
 
 export function assertNotEqual<T>(actual: T, expected: T, msg?: string): void {
   if (equals(actual, expected)) {
-    throw Object.assign(new Error(msg || `Expected: ${expected} - Actual: ${actual}`), {
+    throw Object.assign(new Exception(msg || `Expected: ${expected} - Actual: ${actual}`), {
       actual,
       expected,
     });
@@ -426,7 +450,7 @@ export function safeHash<T>(x: T): number {
   return identityHash(x);
 }
 
-export function equalArraysWith<T>(x: ArrayLike<T>, y: ArrayLike<T>, eq: (x: T, y: T) => boolean): boolean {
+export function equalArraysWith<T>(x: Nullable<ArrayLike<T>>, y: Nullable<ArrayLike<T>>, eq: (x: T, y: T) => boolean): boolean {
   if (x == null) { return y == null; }
   if (y == null) { return false; }
   if (x.length !== y.length) { return false; }
@@ -436,7 +460,7 @@ export function equalArraysWith<T>(x: ArrayLike<T>, y: ArrayLike<T>, eq: (x: T, 
   return true;
 }
 
-export function equalArrays<T>(x: ArrayLike<T>, y: ArrayLike<T>): boolean {
+export function equalArrays<T>(x: Nullable<ArrayLike<T>>, y: Nullable<ArrayLike<T>>): boolean {
   return equalArraysWith(x, y, equals);
 }
 
@@ -456,11 +480,11 @@ function equalObjects(x: { [k: string]: any }, y: { [k: string]: any }): boolean
   return true;
 }
 
-export function physicalEquality<T>(x: T, y: T): boolean {
+export function physicalEquals<T>(x: T, y: T): boolean {
   return x === y;
 }
 
-export function equals<T>(x: T, y: T): boolean {
+export function equals<T>(x: Nullable<T>, y: Nullable<T>): boolean {
   if (x === y) {
     return true;
   } else if (x == null) {

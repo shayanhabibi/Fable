@@ -1,9 +1,10 @@
-import { OperationCanceledError, Trampoline } from "./AsyncBuilder.js";
+import { OperationCanceledException, Trampoline } from "./AsyncBuilder.js";
 import { Continuation, Continuations } from "./AsyncBuilder.js";
 import { Async, IAsyncContext, CancellationToken } from "./AsyncBuilder.js";
 import { protectedCont, protectedBind, protectedReturn } from "./AsyncBuilder.js";
 import { FSharpChoice$2_$union, Choice_makeChoice1Of2, Choice_makeChoice2Of2 } from "./Choice.js";
 import { TimeoutException } from "./SystemException.js";
+import { Exception } from "./Util.js";
 
 function emptyContinuation<T>(_x: T) {
   // NOP
@@ -53,7 +54,7 @@ export function isCancellationRequested(token: CancellationToken) {
 
 export function throwIfCancellationRequested(token: CancellationToken) {
   if (token != null && token.isCancelled) {
-    throw new Error("Operation is cancelled");
+    throw new Exception("Operation is cancelled");
   }
 }
 
@@ -62,11 +63,11 @@ function throwAfter(millisecondsDueTime: number): Async<void> {
     let tokenId: number;
     const timeoutId = setTimeout(() => {
       ctx.cancelToken.removeListener(tokenId);
-      ctx.onError(new TimeoutException() as Error);
+      ctx.onError(new TimeoutException());
     }, millisecondsDueTime);
     tokenId = ctx.cancelToken.addListener(() => {
       clearTimeout(timeoutId);
-      ctx.onCancel(new OperationCanceledError());
+      ctx.onCancel(new OperationCanceledException());
     });
   });
 }
@@ -93,7 +94,7 @@ export function startChild<T>(computation: Async<T>, ms?: number): Async<Async<T
 export function awaitPromise<T>(p: Promise<T>) {
   return fromContinuations((conts: Continuations<T>) =>
     p.then(conts[0]).catch((err) =>
-      (err instanceof OperationCanceledError
+      (err instanceof OperationCanceledException
         ? conts[2] : conts[1])(err)));
 }
 
@@ -104,7 +105,7 @@ export function cancellationToken() {
 export const defaultCancellationToken = new CancellationToken();
 
 export function catchAsync<T>(work: Async<T>) {
-  return protectedCont((ctx: IAsyncContext<FSharpChoice$2_$union<T, Error>>) => {
+  return protectedCont((ctx: IAsyncContext<FSharpChoice$2_$union<T, Exception>>) => {
     work({
       onSuccess: (x) => ctx.onSuccess(Choice_makeChoice1Of2(x)),
       onError: (ex) => ctx.onSuccess(Choice_makeChoice2Of2(ex)),
@@ -154,17 +155,19 @@ export function sleep(millisecondsDueTime: number) {
     }, millisecondsDueTime);
     tokenId = ctx.cancelToken.addListener(() => {
       clearTimeout(timeoutId);
-      ctx.onCancel(new OperationCanceledError());
+      ctx.onCancel(new OperationCanceledException());
     });
   });
 }
 
-export function runSynchronously(): never {
-  throw new Error("Asynchronous code cannot be run synchronously in JS");
-}
-
 export function start<T>(computation: Async<T>, cancellationToken?: CancellationToken) {
-  return startWithContinuations(computation, cancellationToken);
+  return startWithContinuations(
+    computation,
+    emptyContinuation,
+    function (err) { throw err },
+    emptyContinuation,
+    cancellationToken
+  );
 }
 
 export function startImmediate<T>(computation: Async<T>, cancellationToken?: CancellationToken) {
@@ -173,19 +176,16 @@ export function startImmediate<T>(computation: Async<T>, cancellationToken?: Can
 
 export function startWithContinuations<T>(
   computation: Async<T>,
-  continuation?: Continuation<T> | CancellationToken,
-  exceptionContinuation?: Continuation<any>,
-  cancellationContinuation?: Continuation<any>,
+  continuation: Continuation<T>,
+  exceptionContinuation: Continuation<any>,
+  cancellationContinuation: Continuation<any>,
   cancelToken?: CancellationToken) {
-  if (typeof continuation !== "function") {
-    cancelToken = continuation as CancellationToken;
-    continuation = undefined;
-  }
+
   const trampoline = new Trampoline();
   computation({
     onSuccess: continuation ? continuation as Continuation<T> : emptyContinuation,
-    onError: exceptionContinuation ? exceptionContinuation : emptyContinuation,
-    onCancel: cancellationContinuation ? cancellationContinuation : emptyContinuation,
+    onError: exceptionContinuation,
+    onCancel: cancellationContinuation,
     cancelToken: cancelToken ? cancelToken : defaultCancellationToken,
     trampoline,
   });

@@ -4,6 +4,7 @@ open Fable
 open Fable.AST
 open System.Collections.Concurrent
 open System.Collections.Generic
+open FSharp.Compiler.CodeAnalysis
 open FSharp.Compiler.Symbols
 open System
 
@@ -33,22 +34,25 @@ type Assemblies(getPlugin, fsharpAssemblies: FSharpAssembly list, addLog: Severi
                     coreAssemblies.Add(asmName, asm)
                 else
                     let scanForPlugins =
-                        try
-                            asm.Contents.Attributes
-                            |> Seq.exists (fun attr ->
-                                attr.AttributeType.TryFullName = Some "Fable.ScanForPluginsAttribute"
-                            )
-                        with error ->
-                            // To help identify problem, log information about the exception
-                            // but keep the process going to mimic previous Fable behavior
-                            // and because these exception seems harmless
-                            let errorMessage =
-                                $"Could not scan {path} for Fable plugins, skipping this assembly. Original error: {error.Message}"
-
-                            addLog Severity.Info errorMessage
-
-                            hasSkippedAssembly <- true
+                        if Metadata.isSystemPackage asmName then
                             false
+                        else
+                            try
+                                asm.Contents.Attributes
+                                |> Seq.exists (fun attr ->
+                                    attr.AttributeType.TryFullName = Some "Fable.ScanForPluginsAttribute"
+                                )
+                            with error ->
+                                // To help identify problem, log information about the exception
+                                // but keep the process going to mimic previous Fable behavior
+                                // and because these exception seems harmless
+                                let errorMessage =
+                                    $"Could not scan {path} for Fable plugins, skipping this assembly. Original error: {error.Message}"
+
+                                addLog Severity.Info errorMessage
+
+                                hasSkippedAssembly <- true
+                                false
 
                     if scanForPlugins then
                         for e in asm.Contents.Entities do
@@ -166,8 +170,8 @@ type PrecompiledInfo =
 type Project
     private
     (
-        projFile: string,
-        sourceFiles: string[],
+        projectFile: string,
+        projectOptions: FSharpProjectOptions,
         implFiles: Map<string, ImplFile>,
         assemblies: Assemblies,
         ?precompiledInfo: PrecompiledInfo
@@ -189,8 +193,8 @@ type Project
 
     static member From
         (
-            projFile: string,
-            sourceFiles: string[],
+            projectFile: string,
+            projectOptions: FSharpProjectOptions,
             fsharpFiles: FSharpImplementationFileContents list,
             fsharpAssemblies: FSharpAssembly list,
             addLog: Severity -> string -> unit,
@@ -198,6 +202,9 @@ type Project
             ?precompiledInfo: PrecompiledInfo
         )
         =
+
+        let checknulls = projectOptions.OtherOptions |> Array.exists ((=) "--checknulls+")
+        Compiler.SetCheckNullsUnsafe checknulls // set it one time only as early as possible
 
         let getPlugin = defaultArg getPlugin (fun _ -> failwith "Plugins are not supported")
 
@@ -212,7 +219,7 @@ type Project
             )
             |> Map
 
-        Project(projFile, sourceFiles, implFilesMap, assemblies, ?precompiledInfo = precompiledInfo)
+        Project(projectFile, projectOptions, implFilesMap, assemblies, ?precompiledInfo = precompiledInfo)
 
     member this.Update(files: FSharpImplementationFileContents list) =
         let implFiles =
@@ -223,7 +230,7 @@ type Project
                 Map.add key file implFiles
             )
 
-        Project(this.ProjectFile, this.SourceFiles, implFiles, this.Assemblies, this.PrecompiledInfo)
+        Project(this.ProjectFile, this.ProjectOptions, implFiles, this.Assemblies, this.PrecompiledInfo)
 
     member _.TryGetInlineExpr(com: Compiler, memberUniqueName: string) =
         inlineExprsDic
@@ -237,8 +244,8 @@ type Project
             implFile.InlineExprs
             |> List.mapToArray (fun (uniqueName, expr) -> uniqueName, expr.Calculate(com))
 
-    member _.ProjectFile = projFile
-    member _.SourceFiles = sourceFiles
+    member _.ProjectFile = projectFile
+    member _.ProjectOptions = projectOptions
     member _.ImplementationFiles = implFiles
     member _.Assemblies = assemblies
     member _.PrecompiledInfo = precompiledInfo
@@ -300,7 +307,8 @@ type CompilerImpl
         member _.OutputDir = outDir
         member _.OutputType = outType
         member _.ProjectFile = project.ProjectFile
-        member _.SourceFiles = project.SourceFiles
+        member _.ProjectOptions = project.ProjectOptions
+        member _.SourceFiles = project.ProjectOptions.SourceFiles
 
         member _.IncrementCounter() =
             counter <- counter + 1

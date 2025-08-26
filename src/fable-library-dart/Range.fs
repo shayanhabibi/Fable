@@ -1,4 +1,4 @@
-﻿module FSharp.Core.OperatorIntrinsics
+module FSharp.Core.OperatorIntrinsics
 
 let makeRangeStepFunction<'T> (step: 'T) (stop: 'T) (zero: 'T) (add: 'T -> 'T -> 'T) (compare: 'T -> 'T -> int) =
     let stepComparedWithZero = compare step zero
@@ -41,9 +41,9 @@ let rangeInt start step stop =
 let rangeChar (start: char) (stop: char) =
     let intStop = int stop
 
-    let stepFn c =
-        if c <= intStop then
-            Some(char c, c + 1)
+    let stepFn i =
+        if i <= intStop then
+            Some(char i, i + 1)
         else
             None
 

@@ -383,19 +383,19 @@ module Paths =
             tokens = None
         }
 
-    let mkGenericOffsetPath (names: Symbol seq) (genArgs: GenericArgs option) (offset: int) : Path =
+    let mkGenericPath (names: Symbol seq) (ownerGenArgs: GenericArgs option) (genArgs: GenericArgs option) : Path =
         let len = Seq.length names
         let idents = mkPathIdents names
 
         let args i =
-            if i = len - 1 - offset then
+            if i = len - 2 then
+                ownerGenArgs
+            elif i = len - 1 then
                 genArgs
             else
                 None
 
         idents |> Seq.mapi (fun i ident -> mkPathSegment ident (args i)) |> mkPath
-
-    let mkGenericPath (names: Symbol seq) (genArgs: GenericArgs option) : Path = mkGenericOffsetPath names genArgs 0
 
 [<AutoOpen>]
 module Patterns =
@@ -513,6 +513,8 @@ module Blocks =
             tokens = None
         }
 
+    let mkBodyBlock (expr: Expr) : Block = [ expr |> mkExprStmt ] |> mkBlock
+
     let mkExprBlock (expr: Expr) : Block =
         match expr.kind with
         | ExprKind.Block(block, None) -> block
@@ -573,7 +575,7 @@ module MacCalls =
 
     let mkMacCall symbol delim kind (tokens: token.Token seq) : MacCall =
         {
-            path = mkGenericPath [ symbol ] None
+            path = mkGenericPath [ symbol ] None None
             args = mkDelimitedMacArgs delim kind tokens
             prior_type_ascription = None
         }
@@ -615,7 +617,7 @@ module Attrs =
         }
 
     let mkAttrKind (name: Symbol) args : AttrKind =
-        let path = mkGenericPath [ name ] None
+        let path = mkGenericPath [ name ] None None
         let item = mkAttrItem path args
         let kind = AttrKind.Normal(item, None)
         kind
@@ -742,7 +744,7 @@ module Exprs =
         ExprKind.Path(qualified, path) |> mkExpr
 
     let mkGenericPathExpr names genArgs : Expr =
-        mkGenericPath names genArgs |> mkPathExpr
+        mkGenericPath names None genArgs |> mkPathExpr
 
     let mkStructExpr path fields : Expr =
         {
@@ -786,6 +788,14 @@ module Exprs =
 
     let mkLabelBlockExpr name (statements: Stmt seq) : Expr =
         ExprKind.Block(mkBlock statements, Some(mkLabel name)) |> mkExpr
+
+    let mkUnsafeBlockExpr (expr: Expr) : Expr =
+        let block = mkExprBlock expr
+
+        let unsafeBlock =
+            { block with rules = BlockCheckMode.Unsafe(UnsafeSource.UserProvided) }
+
+        unsafeBlock |> mkBlockExpr
 
     let mkIfThenExpr ifExpr thenExpr : Expr =
         let thenBlock = mkSemiBlock thenExpr
@@ -1019,11 +1029,11 @@ module Bounds =
 
     let mkFnTraitGenericBound inputs output : GenericBound =
         let genArgs = mkParenGenericArgs inputs output
-        let path = mkGenericPath [ rawIdent "Fn" ] genArgs
+        let path = mkGenericPath [ rawIdent "Fn" ] None genArgs
         mkTraitGenericBound path
 
     let mkTypeTraitGenericBound names genArgs : GenericBound =
-        let path = mkGenericPath names genArgs
+        let path = mkGenericPath names None genArgs
         mkTraitGenericBound path
 
 [<AutoOpen>]
@@ -1091,7 +1101,8 @@ module Types =
 
     let mkPathTy path : Ty = TyKind.Path(None, path) |> mkTy
 
-    let mkGenericPathTy names genArgs : Ty = mkGenericPath names genArgs |> mkPathTy
+    let mkGenericPathTy names genArgs : Ty =
+        mkGenericPath names None genArgs |> mkPathTy
 
     let mkArrayTy ty (size: Expr) : Ty =
         TyKind.Array(ty, mkAnonConst size) |> mkTy
@@ -1353,7 +1364,7 @@ module Items =
                 span = DUMMY_SP
             }
 
-        let prefix = mkGenericPath names None
+        let prefix = mkGenericPath names None None
         let useTree = mkUseTree prefix kind
         let ident = mkIdent ""
         ItemKind.Use(useTree) |> mkItem attrs ident
@@ -1409,6 +1420,10 @@ module Items =
         let ident = mkIdent name
         let def = Defaultness.Final
         ItemKind.Const(def, ty, exprOpt) |> mkItem attrs ident
+
+    let mkExternCrateItem attrs name (aliasOpt: Symbol option) : Item =
+        let ident = mkIdent name
+        ItemKind.ExternCrate(aliasOpt) |> mkItem attrs ident
 
     let mkImplItem attrs name ty generics items ofTrait : Item =
         let ident = mkIdent name

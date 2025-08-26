@@ -228,14 +228,14 @@ let noSideEffectBeforeIdent identName expr =
 
     findIdentOrSideEffect expr && not sideEffect
 
-let canInlineArg identName value body =
+let canInlineArg com identName value body =
     match value with
     | Value((Null _ | UnitConstant | TypeInfo _ | BoolConstant _ | NumberConstant _ | CharConstant _), _) -> true
     | Value(StringConstant s, _) -> s.Length < 100
     | _ ->
         let refCount = countReferencesUntil 2 identName body
 
-        (refCount <= 1 && not (canHaveSideEffects value))
+        (refCount <= 1 && not (canHaveSideEffects com value))
         // If it can have side effects, make sure is at least referenced once so the expression is not erased
         || (refCount = 1
             && noSideEffectBeforeIdent identName body
@@ -307,7 +307,7 @@ module private Transforms =
             match value with
             | Import(i, _, _) -> i.IsCompilerGenerated
             | Call(callee, info, _, _) when List.isEmpty info.Args && List.contains "value" info.Tags ->
-                canInlineArg ident.Name callee letBody
+                canInlineArg com ident.Name callee letBody
             // Replace non-recursive lambda bindings
             | NestedLambda(_args, lambdaBody, _name) ->
                 match lambdaBody with
@@ -315,14 +315,14 @@ module private Transforms =
                 // Check the lambda doesn't reference itself recursively
                 | _ ->
                     countReferencesUntil 1 ident.Name lambdaBody = 0
-                    && canInlineArg ident.Name value letBody
+                    && canInlineArg com ident.Name value letBody
                     // If we inline the lambda Fable2Rust doesn't have
                     // a chance to clone the mutable ident
                     && (if com.Options.Language = Rust then
                             referencesMutableIdent lambdaBody |> not
                         else
                             true)
-            | _ -> canInlineArg ident.Name value letBody
+            | _ -> canInlineArg com ident.Name value letBody
 
         if canInlineBinding then
             let value =
@@ -681,6 +681,9 @@ module private Transforms =
             | _ -> None
         | _ -> None
 
+    let isGetterOrValueWithoutGenerics (memb: MemberFunctionOrValue) =
+        memb.IsGetter || (memb.IsValue && List.isEmpty memb.GenericParameters)
+
     let curryReceivedArgs (com: Compiler) e =
         match e with
         // Args passed to a lambda are not uncurried, as it's difficult to do it right, see #2657
@@ -688,6 +691,16 @@ module private Transforms =
         | Delegate(args, body, name, tags) ->
             let args, body = curryArgIdentsAndReplaceInBody args body
             Delegate(args, body, name, tags)
+
+        // Uncurry getters for Rust
+        | Call(Get(_callee, FieldGet _, _, _), m, _, r) when com.Options.Language = Rust ->
+            match Option.bind com.TryGetMember m.MemberRef with
+            | Some memb when isGetterOrValueWithoutGenerics memb ->
+                match memb.ReturnParameter.Type with
+                // It may happen the arity of the abstract signature is smaller than actual arity
+                | Arity arity when arity > 1 -> Extended(Curry(e, arity), r)
+                | _ -> e
+            | _ -> e
 
         // Uncurry also values received from getters
         | GetField com (_callee, Arity arity, r) when arity > 1 -> Extended(Curry(e, arity), r)
@@ -707,9 +720,6 @@ module private Transforms =
             ObjectExpr(members, t, baseCall)
 
         | e -> e
-
-    let isGetterOrValueWithoutGenerics (mRef: MemberFunctionOrValue) =
-        mRef.IsGetter || (mRef.IsValue && List.isEmpty mRef.GenericParameters)
 
     let uncurrySendingArgs (com: Compiler) e =
         let uncurryConsArgs args (fields: Field seq) =
@@ -747,8 +757,8 @@ module private Transforms =
                     match m.Body.Type with
                     | Arity arity when arity > 1 ->
                         match com.TryGetMember(m.MemberRef) with
-                        | Some mRef when isGetterOrValueWithoutGenerics mRef ->
-                            match mRef.ReturnParameter.Type with
+                        | Some memb when isGetterOrValueWithoutGenerics memb ->
+                            match memb.ReturnParameter.Type with
                             // It may happen the arity of the abstract signature is smaller than actual arity
                             | Arity arity when arity > 1 -> { m with Body = uncurryExpr com (Some arity) m.Body }
                             | _ -> m
@@ -855,9 +865,9 @@ let rec transformDeclaration transformations (com: Compiler) file decl =
                         | Arity arity when arity > 1 ->
                             m.ImplementedSignatureRef
                             |> Option.bind (com.TryGetMember)
-                            |> Option.bind (fun mRef ->
-                                if isGetterOrValueWithoutGenerics mRef then
-                                    match mRef.ReturnParameter.Type with
+                            |> Option.bind (fun memb ->
+                                if isGetterOrValueWithoutGenerics memb then
+                                    match memb.ReturnParameter.Type with
                                     // It may happen the arity of the abstract signature is smaller than actual arity
                                     | Arity arity when arity > 1 ->
                                         Some { m with Body = uncurryExpr com (Some arity) m.Body }
