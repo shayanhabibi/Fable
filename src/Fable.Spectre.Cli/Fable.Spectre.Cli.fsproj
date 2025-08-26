@@ -12,6 +12,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <None Include="README.md" />
         <Compile Include="Spec.fs" />
         <Compile Include="Style.fs" />
         <Compile Include="Contributors.fs" />
@@ -21,25 +22,13 @@
         <Compile Include="BuildalyzerCrackerResolver.fs" />
         <Compile Include="Main.fs" />
         <Compile Include="CustomLogging.fs" />
-        <Compile Include="Settings\Common.fs" />
-        <Compile Include="Settings\CommonCompile.fs" />
-        <Compile Include="Settings\Python.fs" />
-        <Compile Include="Settings\Rust.fs" />
-        <Compile Include="Settings\JavaScript.fs" />
-        <Compile Include="Settings\TypeScript.fs" />
-        <Compile Include="Settings\Dart.fs" />
-        <Compile Include="Settings\Php.fs" />
-        <Compile Include="Settings\Fable.fs" />
+        <Compile Include="Settings\Types.fs" />
+        <Compile Include="Settings\Root.fs" />
+        <Compile Include="Settings\Clean.fs" />
+        <Compile Include="Settings\Compile.fs" />
         <Compile Include="Commands\CommonRunner.fs" />
         <Compile Include="Commands\Clean.fs" />
-        <Compile Include="Commands\Watch.fs" />
-        <Compile Include="Commands\JavaScript.fs" />
-        <Compile Include="Commands\TypeScript.fs" />
-        <Compile Include="Commands\Python.fs" />
-        <Compile Include="Commands\Rust.fs" />
-        <Compile Include="Commands\Php.fs" />
-        <Compile Include="Commands\Dart.fs" />
-        <Compile Include="Commands\Fable.fs" />
+        <Compile Include="Commands\Compile.fs" />
         <Compile Include="Entry.fs" />
     </ItemGroup>
     <ItemGroup>

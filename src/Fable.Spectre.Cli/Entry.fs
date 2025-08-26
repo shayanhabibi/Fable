@@ -1,26 +1,10 @@
 open Fable
 open Fable.Spectre.Cli.Commands.Clean
-open Fable.Spectre.Cli.Commands.CommonRunner
-open Fable.Spectre.Cli.Commands.Dart
-open Fable.Spectre.Cli.Commands.Fable
-open Fable.Spectre.Cli.Commands.JavaScript
-open Fable.Spectre.Cli.Commands.Php
-open Fable.Spectre.Cli.Commands.Python
-open Fable.Spectre.Cli.Commands.Rust
-open Fable.Spectre.Cli.Commands.TypeScript
-open Fable.Spectre.Cli.Commands.Watch
-open Fable.Spectre.Cli.Settings.CommonCompile
-open Fable.Spectre.Cli.Settings.Common
-open Fable.Spectre.Cli.Settings.Dart
-open Fable.Spectre.Cli.Settings.JavaScript
-open Fable.Spectre.Cli.Settings.Php
-open Fable.Spectre.Cli.Settings.Python
-open Fable.Spectre.Cli.Settings.Rust
-open Fable.Spectre.Cli.Settings.TypeScript
+open Fable.Spectre.Cli.Commands.Compile
+open Fable.Spectre.Cli.Settings.Compile
 open Fable.Spectre.Cli.SpectreOutput
 open Spectre.Console
 open Spectre.Console.Cli
-open SpectreCoff
 
 [<EntryPoint>]
 let main argv =
@@ -29,41 +13,77 @@ let main argv =
     app.Configure(fun config ->
         config.Settings.ShowOptionDefaultValues <- false
         config.Settings.HelpProviderStyles.Options.RequiredOption <- Style(foreground = Color.Blue)
+        // NOTE: The order the branches are added here determines the order
+        //       in the help printout. We order this by popularity.
+        config
+            .AddBranch(
+                "javascript",
+                (fun (branchConfig: IConfigurator<JavaScriptSettings>) ->
+                    branchConfig.SetDefaultCommand<JavaScriptCommand>()
 
-        config.AddBranch(
-            "python",
-            (fun (branchConfig: IConfigurator<PythonSettings>) ->
-                branchConfig.SetDefaultCommand<PythonCommand>()
-                branchConfig.SetDescription(dim "Fable for python.")
+                    branchConfig.SetDescription(
+                        "[dim]Fable for javascript[/] [grey][underline]DEFAULT[/] (alias js)[/]"
+                    )
+
+                    branchConfig
+                        .AddCommand<JavaScriptWatchCommand>("watch")
+                        .WithAlias("w")
+                        .WithDescription(dim "Fable for javascript in watch mode")
+                    |> ignore
+                )
             )
-        )
+            .WithAlias("js")
         |> ignore
 
-        config.AddBranch(
-            "javascript",
-            (fun (branchConfig: IConfigurator<JavaScriptSettings>) ->
-                branchConfig.SetDefaultCommand<JavaScriptCommand>()
-                branchConfig.SetDescription(dim "Fable for javascript.")
+        config
+            .AddBranch(
+                "typescript",
+                (fun (branchConfig: IConfigurator<TypeScriptSettings>) ->
+                    branchConfig.SetDefaultCommand<TypeScriptCommand>()
+                    branchConfig.SetDescription("[dim]Fable for typescript[/] [grey](alias ts)[/]")
+
+                    branchConfig
+                        .AddCommand<TypeScriptWatchCommand>("watch")
+                        .WithAlias("w")
+                        .WithDescription(dim "Fable for typescript in watch mode")
+                    |> ignore
+                )
             )
-        )
+            .WithAlias("ts")
         |> ignore
 
-        config.AddBranch(
-            "rust",
-            (fun (branchConfig: IConfigurator<RustSettings>) ->
-                branchConfig.SetDefaultCommand<RustCommand>()
-                branchConfig.SetDescription(dim "Fable for rust.")
+        config
+            .AddBranch(
+                "python",
+                (fun (branchConfig: IConfigurator<PythonSettings>) ->
+                    branchConfig.SetDefaultCommand<PythonCommand>()
+                    branchConfig.SetDescription("[dim]Fable for python[/] [grey](alias py)[/]")
+
+                    branchConfig
+                        .AddCommand<PythonWatchCommand>("watch")
+                        .WithAlias("w")
+                        .WithDescription(dim "Fable for python in watch mode")
+                    |> ignore
+                )
             )
-        )
+            .WithAlias("py")
         |> ignore
 
-        config.AddBranch(
-            "typescript",
-            (fun (branchConfig: IConfigurator<TypeScriptSettings>) ->
-                branchConfig.SetDefaultCommand<TypeScriptCommand>()
-                branchConfig.SetDescription(dim "Fable for typescript.")
+        config
+            .AddBranch(
+                "rust",
+                (fun (branchConfig: IConfigurator<RustSettings>) ->
+                    branchConfig.SetDefaultCommand<RustCommand>()
+                    branchConfig.SetDescription("[dim]Fable for rust[/] [grey](alias rs)[/]")
+
+                    branchConfig
+                        .AddCommand<RustWatchCommand>("watch")
+                        .WithAlias("w")
+                        .WithDescription(dim "Fable for rust in watch mode")
+                    |> ignore
+                )
             )
-        )
+            .WithAlias("rs")
         |> ignore
 
         config.AddBranch(
@@ -71,6 +91,12 @@ let main argv =
             (fun (branchConfig: IConfigurator<PhpSettings>) ->
                 branchConfig.SetDefaultCommand<PhpCommand>()
                 branchConfig.SetDescription(dim "Fable for php.")
+
+                branchConfig
+                    .AddCommand<PhpWatchCommand>("watch")
+                    .WithAlias("w")
+                    .WithDescription(dim "Fable for php in watch mode")
+                |> ignore
             )
         )
         |> ignore
@@ -80,6 +106,12 @@ let main argv =
             (fun (branchConfig: IConfigurator<DartSettings>) ->
                 branchConfig.SetDefaultCommand<DartCommand>()
                 branchConfig.SetDescription(dim "Fable for dart.")
+
+                branchConfig
+                    .AddCommand<DartWatchCommand>("watch")
+                    .WithAlias("w")
+                    .WithDescription(dim "Fable for dart in watch mode")
+                |> ignore
             )
         )
         |> ignore
@@ -89,8 +121,20 @@ let main argv =
             .WithDescription(dim "Remove fable_modules folders and files with specified extension (default is .fs.js)")
         |> ignore
 
-        config.AddCommand<WatchCommand>("watch").WithDescription(dim "Run fable in watch mode.")
+        config
+            .AddCommand<WatchCommand>("watch")
+            .WithAlias("w")
+            .WithDescription("[dim]Fable in watch mode[/] [grey](alias 'w')[/]")
         |> ignore
+
+        config
+            .AddCommand<FablePrecompileCommand>("precompile")
+            // TODO - provide documentation
+            // .WithDescription(dim "")
+            .IsHidden()
+        |> ignore
+
+        config.UseStrictParsing() |> ignore
     )
 
     app

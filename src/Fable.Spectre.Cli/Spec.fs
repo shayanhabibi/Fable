@@ -1,6 +1,7 @@
 ﻿module Fable.Spectre.Cli.Settings.Spec
 
 open Fable
+open Spectre.Console.Cli
 
 // All arguments and flags should be available to the root executable.
 // The use of commands such as 'clean' with --help will show the sublist
@@ -12,11 +13,29 @@ open Fable
 // 3. Language related args (ie related to only that language)
 // 4. A superset of all of the above
 
+let getStatus =
+    function
+    | JavaScript
+    | TypeScript -> "stable"
+    | Python -> "beta"
+    | Rust -> "alpha"
+    | Dart -> "beta"
+    | Php -> "experimental"
+
+let getLibPkgVersion =
+    function
+    | JavaScript -> Some("npm", "@fable-org/fable-library-js", Literals.JS_LIBRARY_VERSION)
+    | TypeScript -> Some("npm", "@fable-org/fable-library-ts", Literals.JS_LIBRARY_VERSION)
+    | Python
+    | Rust
+    | Dart
+    | Php -> None
 
 /// Common settings for all commands
 type ICommonArgs =
     abstract version: bool
     abstract workingDirectory: string
+    abstract projPath: string
     abstract verbosity: Verbosity
     abstract silent: bool
     abstract extension: string
@@ -27,7 +46,7 @@ type ICommonArgs =
 /// Common settings all compiling related commands
 type ICompilingArgs =
     inherit ICommonArgs
-    abstract definitions: string[]
+    abstract definitions: string list
     abstract outputDirectory: string option
     abstract configuration: string
     abstract watch: bool
