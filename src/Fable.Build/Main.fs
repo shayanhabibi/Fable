@@ -118,17 +118,11 @@ let main argv =
             match args with
             | "--javascript" :: _ -> BuildFableLibraryJavaScript().Run()
             | "--typescript" :: _ -> BuildFableLibraryTypeScript().Run()
-            | "--python" :: _ -> BuildFableLibraryPython().Run()
-            | "--dart" :: _ -> BuildFableLibraryDart().Run()
-            | "--rust" :: _ -> BuildFableLibraryRust().Run()
             | _ -> printHelp ()
         | "test" :: args ->
             match args with
             | "javascript" :: args -> Test.JavaScript.handle args
             | "typescript" :: args -> Test.TypeScript.handle args
-            | "python" :: args -> Test.Python.handle args
-            | "dart" :: args -> Test.Dart.handle args
-            | "rust" :: args -> Test.Rust.handle args
             | "integration" :: args -> Test.Integration.handle args
             | "standalone" :: _ -> Test.Standalone.handle args
             // This test is using quicktest project for now,
@@ -139,9 +133,6 @@ let main argv =
             match args with
             | "javascript" :: _ -> Quicktest.JavaScript.handle args
             | "typescript" :: _ -> Quicktest.TypeScript.handle args
-            | "python" :: _ -> Quicktest.Python.handle args
-            | "dart" :: _ -> Quicktest.Dart.handle args
-            | "rust" :: _ -> Quicktest.Rust.handle args
             | _ -> printHelp ()
         | "standalone" :: args -> Standalone.handle args
         | "compiler-js" :: args -> CompilerJs.handle args

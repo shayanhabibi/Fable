@@ -734,10 +734,7 @@ let copyFableLibraryAndPackageSourcesPy (opts: CrackerOptions) (pkgs: FablePacka
             { pkg with FsprojPath = IO.Path.Combine(targetDir, IO.Path.GetFileName(pkg.FsprojPath)) }
         )
 
-    let shouldCopy =
-        match opts.FableLib with
-        | Some path when path.ToLowerInvariant() = Py.Naming.fableLibPyPI -> false
-        | _ -> true
+    let shouldCopy = true
 
     getFableLibraryPath opts shouldCopy, pkgRefs
 

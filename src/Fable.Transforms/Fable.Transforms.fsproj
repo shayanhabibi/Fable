@@ -13,16 +13,12 @@
     <Compile Include="Global/Prelude.fs" />
     <Compile Include="Global/Compiler.fs" />
     <Compile Include="Global/Naming.fs" />
-    <Compile Include="Python/Prelude.fs" />
     <Compile Include="MonadicTrampoline.fs" />
     <Compile Include="Transforms.Util.fs" />
     <Compile Include="OverloadSuffix.fs" />
     <Compile Include="FSharp2Fable.Util.fs" />
     <Compile Include="ReplacementsInject.fs" />
     <Compile Include="Replacements.Util.fs" />
-    <Compile Include="Python/Replacements.fs" />
-    <Compile Include="Rust/Replacements.fs" />
-    <Compile Include="Dart/Replacements.fs" />
     <Compile Include="Replacements.fs" />
     <Compile Include="Replacements.Api.fs" />
     <Compile Include="FSharp2Fable.fsi" />
@@ -32,27 +28,10 @@
     <Compile Include="Fable2Babel.fs" />
     <Compile Include="Printer.fs" />
     <Compile Include="BabelPrinter.fs" />
-    <Compile Include="Python/Python.AST.fs" />
-    <Compile Include="Python/Fable2Python.Types.fs" />
-    <Compile Include="Python/Fable2Python.Util.fs" />
-    <Compile Include="Python/Fable2Python.Annotation.fs" />
-    <Compile Include="Python/Fable2Python.Reflection.fs" />
-    <Compile Include="Python/Fable2Python.Transforms.fs" />
-    <Compile Include="Python/PythonPrinter.fs" />
-    <Compile Include="Python/PythonCompiler.fs" />
-    <Compile Include="Php/Php.fs" />
-    <Compile Include="Php/Fable2Php.fs" />
-    <Compile Include="Php/PhpPrinter.fs" />
-    <Compile Include="Dart/Dart.fs" />
-    <Compile Include="Dart/Fable2Dart.fs" />
-    <Compile Include="Dart/DartPrinter.fs" />
-    <Compile Include="Rust/RustPrinter.fs" />
-    <Compile Include="Rust/Fable2Rust.fs" />
     <Compile Include="State.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Fable.AST/Fable.AST.fsproj" />
-    <ProjectReference Include="Rust/AST/Rust.AST.fsproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="../../lib/fcs/FSharp.Core.dll" />
