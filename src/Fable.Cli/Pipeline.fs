@@ -485,7 +485,3 @@ let compileFile (com: Compiler) (cliArgs: CliArgs) pathResolver isSilent (outPat
     match com.Options.Language with
     | JavaScript
     | TypeScript -> Js.compileFile com cliArgs pathResolver isSilent outPath
-    | Python -> Python.compileFile com cliArgs pathResolver isSilent outPath
-    | Php -> Php.compileFile com cliArgs pathResolver isSilent outPath
-    | Dart -> Dart.compileFile com cliArgs pathResolver isSilent outPath
-    | Rust -> Rust.compileFile com cliArgs pathResolver isSilent outPath

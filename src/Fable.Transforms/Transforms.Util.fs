@@ -863,8 +863,7 @@ module AST =
         | Delegate _ -> false
         | TypeCast(e, _) ->
             match com.Options.Language with
-            | JavaScript
-            | Python -> canHaveSideEffects com e
+            | JavaScript -> canHaveSideEffects com e
             | _ -> true
         | Value(value, _) ->
             match value with
@@ -897,11 +896,7 @@ module AST =
         | IdentExpr id -> id.IsMutable
         | Get(e, kind, _, _) ->
             match kind with
-            | OptionValue ->
-                match com.Options.Language with
-                | Dart -> canHaveSideEffects com e
-                // Other languages include a runtime check for options
-                | _ -> true
+            | OptionValue -> true
             | ListHead
             | ListTail
             | TupleIndex _
@@ -1116,18 +1111,7 @@ module AST =
             |> raise
 
     let getLibPath (com: Compiler) (moduleName: string) =
-        match com.Options.Language with
-        | Python ->
-            // Python modules should be all lower case without any dots (PEP8)
-            let moduleName' =
-                moduleName
-                |> Naming.applyCaseRule Fable.Core.CaseRules.SnakeCase
-                |> (fun str -> str.Replace(".", "_"))
-
-            com.LibraryDir + "/" + moduleName' + ".py"
-        | Rust -> com.LibraryDir + "/" + moduleName + ".rs"
-        | Dart -> com.LibraryDir + "/" + moduleName + ".dart"
-        | _ -> com.LibraryDir + "/" + moduleName + ".js"
+        com.LibraryDir + "/" + moduleName + ".js"
 
     let makeImportUserGenerated r t (selector: string) (path: string) =
         Import(
@@ -1141,18 +1125,7 @@ module AST =
         )
 
     let makeImportLibWithInfo (com: Compiler) t memberName (moduleName: string) info =
-        let selector =
-            match com.Options.Language with
-            | Rust ->
-                if
-                    moduleName = "System"
-                    || moduleName.StartsWith("System.", StringComparison.Ordinal)
-                    || moduleName.StartsWith("FSharp.", StringComparison.Ordinal)
-                then
-                    moduleName + "::" + memberName
-                else
-                    moduleName + "_::" + memberName
-            | _ -> memberName
+        let selector = memberName
 
         Import(
             {

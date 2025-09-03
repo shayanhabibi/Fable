@@ -316,12 +316,8 @@ module private Transforms =
                 | _ ->
                     countReferencesUntil 1 ident.Name lambdaBody = 0
                     && canInlineArg com ident.Name value letBody
-                    // If we inline the lambda Fable2Rust doesn't have
-                    // a chance to clone the mutable ident
-                    && (if com.Options.Language = Rust then
-                            referencesMutableIdent lambdaBody |> not
-                        else
-                            true)
+            // If we inline the lambda Fable2Rust doesn't have
+            // a chance to clone the mutable ident
             | _ -> canInlineArg com ident.Name value letBody
 
         if canInlineBinding then
@@ -691,16 +687,6 @@ module private Transforms =
         | Delegate(args, body, name, tags) ->
             let args, body = curryArgIdentsAndReplaceInBody args body
             Delegate(args, body, name, tags)
-
-        // Uncurry getters for Rust
-        | Call(Get(_callee, FieldGet _, _, _), m, _, r) when com.Options.Language = Rust ->
-            match Option.bind com.TryGetMember m.MemberRef with
-            | Some memb when isGetterOrValueWithoutGenerics memb ->
-                match memb.ReturnParameter.Type with
-                // It may happen the arity of the abstract signature is smaller than actual arity
-                | Arity arity when arity > 1 -> Extended(Curry(e, arity), r)
-                | _ -> e
-            | _ -> e
 
         // Uncurry also values received from getters
         | GetField com (_callee, Arity arity, r) when arity > 1 -> Extended(Curry(e, arity), r)

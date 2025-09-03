@@ -192,12 +192,6 @@ let argLanguage (args: CliArgs) =
         | "javascript" -> Ok JavaScript
         | "ts"
         | "typescript" -> Ok TypeScript
-        | "py"
-        | "python" -> Ok Python
-        | "php" -> Ok Php
-        | "dart" -> Ok Dart
-        | "rs"
-        | "rust" -> Ok Rust
         | unknown ->
             let errorMessage =
                 [
@@ -317,10 +311,6 @@ type Runner =
                         "FABLE_COMPILER"
                         "FABLE_COMPILER_5"
                         match language with
-                        | Php -> "FABLE_COMPILER_PHP"
-                        | Rust -> "FABLE_COMPILER_RUST"
-                        | Dart -> "FABLE_COMPILER_DART"
-                        | Python -> "FABLE_COMPILER_PYTHON"
                         | TypeScript -> "FABLE_COMPILER_TYPESCRIPT"
                         | JavaScript -> "FABLE_COMPILER_JAVASCRIPT"
                     ]
@@ -464,19 +454,11 @@ let getStatus =
     function
     | JavaScript
     | TypeScript -> "stable"
-    | Python -> "beta"
-    | Rust -> "alpha"
-    | Dart -> "beta"
-    | Php -> "experimental"
 
 let getLibPkgVersion =
     function
     | JavaScript -> Some("npm", "@fable-org/fable-library-js", Literals.JS_LIBRARY_VERSION)
     | TypeScript -> Some("npm", "@fable-org/fable-library-ts", Literals.JS_LIBRARY_VERSION)
-    | Python
-    | Rust
-    | Dart
-    | Php -> None
 
 let private logPrelude commands language =
     match commands with

@@ -46,7 +46,7 @@ let private transformBaseConsCall
             "Only inheriting from primary constructors is supported" |> addWarning com [] r
 
         match makeCallFrom com ctx r Fable.Unit genArgs None baseArgs baseCons with
-        | Fable.Call(_baseExpr, info, t, r) when not (com.Options.Language = Rust) ->
+        | Fable.Call(_baseExpr, info, t, r) ->
             // The baseExpr will be the exposed constructor function,
             // replace with a direct reference to the entity
             let baseExpr =
@@ -381,7 +381,7 @@ let private getImplementedSignatureInfo
             && countNonCurriedParamsForSignature sign = 1
 
         let name =
-            if (isGetter || isSetter) && not (com.Options.Language = Rust) then
+            if (isGetter || isSetter) then
                 Naming.removeGetSetPrefix sign.Name
             else
                 sign.Name
@@ -778,7 +778,6 @@ let private transformExpr (com: IFableCompiler) (ctx: Context) appliedGenArgs fs
                     &&
                     // The replacement only needs to happen when var.FullType = byref<fsExpr.Type>
                     fsExpr.Type = var.FullType.GenericArguments.[0]
-                    && not (com.Options.Language = Rust)
                 then
                     // Getting byref value is compiled as FSharpRef op_Dereference
                     return Replacements.Api.getRefCell com r (List.head v.Type.Generics) v
@@ -790,10 +789,7 @@ let private transformExpr (com: IFableCompiler) (ctx: Context) appliedGenArgs fs
         | FSharpExprPatterns.DefaultValue(FableType com ctx typ) ->
             let r = makeRangeFrom fsExpr
 
-            match com.Options.Language with
-            // In Dart we don't want the compiler to pass default values other than null to [<Optional>] args
-            | Dart -> return Fable.Value(Fable.Null typ, r)
-            | _ -> return Replacements.Api.defaultof com ctx r typ
+            return Replacements.Api.defaultof com ctx r typ
 
         | FSharpExprPatterns.Let((var, value, _), body) ->
             match value with
@@ -1247,18 +1243,6 @@ let private transformExpr (com: IFableCompiler) (ctx: Context) appliedGenArgs fs
             let! valueExpr = transformExpr com ctx [] valueExpr
 
             match valToSet.DeclaringEntity with
-            | Some ent when ent.IsFSharpModule && com.Options.Language = Rust ->
-                // For Rust mutable module values are compiled as functions returning refcells
-                let typ = makeType ctx.GenericArgs valToSet.FullType
-
-                let memberRef =
-                    Fable.GeneratedMember.Function(valToSet.CompiledName, [], typ, entRef = FsEnt.Ref(ent))
-
-                let callInfo = Fable.CallInfo.Create(memberRef = memberRef)
-                let valToSet = makeValueFrom com ctx r valToSet
-                let callExpr = makeCall r valToSet.Type callInfo valToSet
-
-                return Fable.Set(callExpr, Fable.ValueSet, valueExpr.Type, valueExpr, r)
             | Some ent when ent.IsFSharpModule && isModuleValueCompiledAsFunction com valToSet ->
                 // Mutable and public module values are compiled as functions, because
                 // values imported from ES2015 modules cannot be modified (see #986)
@@ -1438,8 +1422,6 @@ let private transformExpr (com: IFableCompiler) (ctx: Context) appliedGenArgs fs
                     | Some ent when ent.IsFSharpModule && isNotPrivate memb ->
                         return Replacements.Api.makeRefFromMutableFunc com ctx r value.Type value
                     | _ -> return Replacements.Api.makeRefFromMutableValue com ctx r value.Type value
-                else if com.Options.Language = Rust then
-                    return Replacements.Api.makeRefFromMutableValue com ctx r value.Type value
                 else
                     return value // Replacements.Api.makeRefCellFromValue com r value
             // This matches passing fields by reference
@@ -1762,13 +1744,11 @@ let private transformMemberFunction
             let body, memberRef =
                 match com.Options.Language with
                 | JavaScript
-                | TypeScript
-                | Python ->
+                | TypeScript ->
                     match applyJsPyDecorators com ctx name memb args body with
                     | Some body ->
                         body, Fable.GeneratedMember.Value(name, body.Type, isInstance = memb.IsInstanceMember)
                     | None -> body, getFunctionMemberRef memb
-                | _ -> body, getFunctionMemberRef memb
 
             [
                 Fable.MemberDeclaration
@@ -1863,10 +1843,7 @@ let private transformExplicitlyAttachedMember
     let body = transformExpr com bodyCtx [] body |> run
     let entFullName = declaringEntity.FullName
 
-    let name, isMangled =
-        match (com :> Compiler).Options.Language with
-        | Rust -> getMemberDeclarationName com memb |> fst, true
-        | _ -> FsMemberFunctionOrValue.CompiledName(memb), false
+    let name, isMangled = FsMemberFunctionOrValue.CompiledName(memb), false
 
     com.AddAttachedMember(
         entFullName,
@@ -1922,13 +1899,7 @@ let private transformMemberDecl
 
         []
     // for Rust, retain inlined functions that have [<CompiledName("...")>] attribute
-    elif
-        isInline memb
-        && not (
-            (com :> Compiler).Options.Language = Rust
-            && (hasAttrib Atts.compiledName memb.Attributes)
-        )
-    then
+    elif isInline memb && not (hasAttrib Atts.compiledName memb.Attributes) then
         []
     elif memb.IsImplicitConstructor then
         transformPrimaryConstructor com ctx memb args body
@@ -1974,7 +1945,7 @@ let private transformMemberDecl
         | _ -> transformMemberFunctionOrValue com ctx memb args body
 
 let private addUsedRootName (com: Compiler) name (usedRootNames: Set<string>) =
-    if not (com.Options.Language = Rust) && Set.contains name usedRootNames then
+    if Set.contains name usedRootNames then
         "Cannot have two module members with same name: " + name |> addError com [] None
 
     Set.add name usedRootNames
@@ -2010,10 +1981,7 @@ let rec private getUsedRootNames (com: Compiler) (usedNames: Set<string>) decls 
                     match getEntityDeclarationName com entRef with
                     | "" -> usedNames
                     | entName ->
-                        let reflectionSuffix =
-                            match com.Options.Language with
-                            | Python -> Fable.Py.Naming.reflectionSuffix
-                            | _ -> Naming.reflectionSuffix
+                        let reflectionSuffix = Naming.reflectionSuffix
 
                         addUsedRootName com entName usedNames
                         // Fable will inject an extra declaration for reflection,
@@ -2046,8 +2014,7 @@ let rec private transformDeclarations (com: FableCompiler) ctx fsDecls =
 
                 if
                     (isErasedOrStringEnumEntity ent
-                     && (com :> Compiler).Options.Language <> TypeScript
-                     && (com :> Compiler).Options.Language <> Python)
+                     && (com :> Compiler).Options.Language <> TypeScript)
                     || isGlobalOrImportedEntity ent
                 then
                     []
@@ -2070,10 +2037,7 @@ let rec private transformDeclarations (com: FableCompiler) ctx fsDecls =
                                 }
                         ]
             // This adds modules in the AST for languages that support them (like Rust)
-            | sub when
-                (fsEnt.IsFSharpModule || fsEnt.IsNamespace)
-                && (com :> Compiler).Options.Language = Rust
-                ->
+            | sub when (fsEnt.IsFSharpModule || fsEnt.IsNamespace) ->
                 let entRef = FsEnt.Ref fsEnt
                 let members = transformDeclarations com ctx sub
 

@@ -127,14 +127,10 @@ module File =
         let fileExt =
             match language with
             | Fable.TypeScript -> ".ts"
-            | Fable.Python -> ".py"
-            | Fable.Php -> ".php"
-            | Fable.Dart -> ".dart"
-            | Fable.Rust -> ".rs"
+
             | Fable.JavaScript -> ".js"
 
         match language, usesOutDir with
-        | Fable.Python, _ -> fileExt // Extension will always be .py for Python
         | _, true -> fileExt
         | _ -> ".fs" + fileExt
 

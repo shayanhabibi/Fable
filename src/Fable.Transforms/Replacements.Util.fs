@@ -523,9 +523,7 @@ let compose (com: ICompiler) ctx r t (f1: Expr) (f2: Expr) =
 let partialApplyAtRuntime (com: Compiler) t arity (expr: Expr) (partialArgs: Expr list) =
     match com.Options.Language with
     | JavaScript
-    | TypeScript
-    | Dart
-    | Python ->
+    | TypeScript ->
         match uncurryLambdaType -1 [] expr.Type with
         | ([] | [ _ ]), _ -> expr
         | argTypes, returnType ->
@@ -537,14 +535,6 @@ let partialApplyAtRuntime (com: Compiler) t arity (expr: Expr) (partialArgs: Exp
             match partialArgs with
             | [] -> curried
             | partialArgs -> curriedApply None t curried partialArgs
-    | _ ->
-        // Check if argTypes.Length < arity?
-        let makeArgIdent i typ = makeTypedIdent typ $"a{i}" // $"a{com.IncrementCounter()}$"
-        let argTypes, returnType = uncurryLambdaType arity [] t
-        let argIdents = argTypes |> List.mapi makeArgIdent
-        let args = argIdents |> List.map Fable.IdentExpr
-        let body = Helper.Application(expr, returnType, partialArgs @ args)
-        makeLambda argIdents body
 
 let curryExprAtRuntime (com: Compiler) arity (expr: Expr) =
     if arity = 1 then
@@ -578,39 +568,11 @@ let uncurryExprAtRuntime (com: Compiler) arity (expr: Expr) =
 
         match com.Options.Language with
         | JavaScript
-        | TypeScript
-        | Dart
-        | Python ->
+        | TypeScript ->
             let uncurriedType = DelegateType(argTypes, returnType)
 
             Helper.LibCall(com, "Util", $"uncurry{arity}", uncurriedType, [ expr ])
-        | _ ->
-            // let makeArgIdent typ = makeTypedIdent typ $"a{com.IncrementCounter()}$"
-            // let argIdents = argTypes |> List.map makeArgIdent
-            // let expr, argIdents2 =
-            //     match expr with
-            //     | Extended(Curry(expr, arity2),_) when arity2 >= arity ->
-            //         if arity2 = arity
-            //         then expr, []
-            //         else
-            //             let argTypes2, _returnType = uncurryLambdaType arity2 [] expr.Type
-            //             expr, argTypes2 |> List.skip arity |> List.map makeArgIdent
-            //     | _ -> expr, []
-            // let args = (argIdents1 @ argIdents2) |> List.map IdentExpr
-            // let body = curriedApply None returnType expr args
-            // let body = makeLambda argIdents2 body
-            // Delegate(argIdents1, body, None, Tags.empty)
-            let argTypes, returnType =
-                match expr.Type with
-                | Fable.LambdaType(argType, returnType) -> uncurryLambdaType arity [] expr.Type
-                | Fable.DelegateType(argTypes, returnType) -> argTypes, returnType
-                | _ -> [], expr.Type
 
-            let makeArgIdent i typ = makeTypedIdent typ $"b{i}" // $"a{com.IncrementCounter()}$"
-            let argIdents = argTypes |> List.mapi makeArgIdent
-            let args = argIdents |> List.map Fable.IdentExpr
-            let body = curriedApply None returnType expr args
-            Fable.Delegate(argIdents, body, None, Fable.Tags.empty)
 
     match expr with
     | Value(Null _, _) -> expr

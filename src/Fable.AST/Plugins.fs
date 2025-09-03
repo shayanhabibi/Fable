@@ -12,19 +12,11 @@ type Verbosity =
 type Language =
     | JavaScript
     | TypeScript
-    | Python
-    | Php
-    | Dart
-    | Rust
 
     override this.ToString() =
         match this with
         | JavaScript -> "JavaScript"
         | TypeScript -> "TypeScript"
-        | Python -> "Python"
-        | Php -> "PHP"
-        | Dart -> "Dart"
-        | Rust -> "Rust"
 
 type CompilerOptions =
     {

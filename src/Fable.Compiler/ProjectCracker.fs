@@ -665,13 +665,8 @@ let copyDirIfDoesNotExist replaceFsprojExt (source: string) (target: string) =
 let getFableLibraryPath (opts: CrackerOptions) (shouldCopy: bool) =
     let buildDir, libDir =
         match opts.FableOptions.Language, opts.FableLib with
-        | Dart, None -> "fable-library-dart", "fable_library"
-        | Rust, None -> "fable-library-rust", "fable-library-rust"
         | TypeScript, None -> "fable-library-ts", $"fable-library-ts.%s{Literals.VERSION}"
-        | Php, None -> "fable-library-php", "fable-library-php"
         | JavaScript, None -> "fable-library-js", $"fable-library-js.%s{Literals.VERSION}"
-        | Python, None -> "fable-library-py/fable_library", "fable_library"
-        | Python, Some Py.Naming.fableLibPyPI -> "fable-library-py", "fable_library"
         | _, Some path ->
             if path.StartsWith("./", StringComparison.Ordinal) then
                 "", Path.normalizeFullPath path
@@ -932,9 +927,7 @@ let getFullProjectOpts (resolver: ProjectCrackerResolver) (opts: CrackerOptions)
             opts.ResetFableModulesDir()
 
         let fableLibDir, pkgRefs =
-            match opts.FableOptions.Language with
-            | Python -> copyFableLibraryAndPackageSourcesPy opts mainProj.PackageReferences
-            | _ -> copyFableLibraryAndPackageSources opts mainProj.PackageReferences
+            copyFableLibraryAndPackageSources opts mainProj.PackageReferences
 
         let pkgRefs =
             pkgRefs

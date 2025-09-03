@@ -121,37 +121,6 @@ module private Util =
         match cliArgs.CompilerOptions.Language with
         // For Python we must have an outDir since all compiled files must be inside the same subdir, so if `outDir` is not
         // set we set `outDir` to the directory of the project file being compiled.
-        | Python ->
-            let fileExt = cliArgs.CompilerOptions.FileExtension
-            let projDir = IO.Path.GetDirectoryName cliArgs.ProjectFile
-
-            let outDir =
-                match cliArgs.OutDir with
-                | Some outDir -> outDir
-                | None -> IO.Path.GetDirectoryName cliArgs.ProjectFile
-
-            let absPath =
-                let absPath = Imports.getTargetAbsolutePath pathResolver file projDir outDir
-
-                let fileName = IO.Path.GetFileName(file)
-
-                let modules =
-                    absPath
-                        .Substring(outDir.Length, absPath.Length - outDir.Length - fileName.Length)
-                        .Trim([| '/'; '\\' |])
-                        .Split([| '/'; '\\' |])
-                    |> Array.map (fun m ->
-                        match m with
-                        | "." -> ""
-                        | m -> m.Replace(".", "_")
-                    )
-                    |> IO.Path.Join
-
-                let fileName = fileName |> Pipeline.Python.getTargetPath cliArgs
-
-                IO.Path.Join(outDir, modules, fileName)
-
-            Path.ChangeExtension(absPath, fileExt)
         | lang ->
             let changeExtension path fileExt =
                 match lang with
@@ -160,7 +129,6 @@ module private Util =
                     let isInFableModules = Naming.isInFableModules file
 
                     File.changeExtensionButUseDefaultExtensionInFableModules lang isInFableModules path fileExt
-                | _ -> Path.ChangeExtension(path, fileExt)
 
             let fileExt = cliArgs.CompilerOptions.FileExtension
 
@@ -400,14 +368,6 @@ OUTPUT TYPE: {result.OutputType}
     %s{result.ProjectOptions.SourceFiles |> String.concat $"{Log.newLine}    "}{Log.newLine}"""
         )
 
-        // If targeting Python, make sure users are not compiling the project as library by mistake
-        // (imports won't work when running the code)
-        match cliArgs.CompilerOptions.Language, result.OutputType with
-        | Python, OutputType.Library ->
-            Log.always
-                "Compiling project as Library. If you intend to run the code directly, please set OutputType to Exe."
-        | _ -> ()
-
         let sourceFiles = result.ProjectOptions.SourceFiles |> Array.map Fable.Compiler.File
 
         ProjectCracked(cliArgs, result, sourceFiles)
@@ -574,14 +534,6 @@ and FableCompiler(checker: InteractiveChecker, projCracked: ProjectCracked, fabl
                     | FSharpFileTypeChecked file ->
                         // It seems when there's a pair .fsi/.fs the F# compiler gives the .fsi extension to the implementation file
                         let fileName = file.FileName |> Path.normalizePath |> Path.ensureFsExtension
-
-                        // For Rust, delay last file's compilation so other files can finish compiling
-                        if
-                            projCracked.CliArgs.CompilerOptions.Language = Rust
-                            && fileName = Array.last state.FilesToCompile
-                            && state.FableFilesCompiledCount < state.FableFilesToCompileExpectedCount - 1
-                        then
-                            do! Async.Sleep(1000)
 
                         Log.verbose (
                             lazy $"Type checked: {IO.Path.GetRelativePath(projCracked.CliArgs.RootDir, file.FileName)}"
@@ -962,27 +914,11 @@ let private checkRunProcess (state: State) (projCracked: ProjectCracked) (compil
 
         let exeFile, args =
             match cliArgs.CompilerOptions.Language, runProc.ExeFile with
-            | Python, Naming.placeholder ->
-                let lastFilePath = findLastFileRelativePath ()
-                "python", lastFilePath :: runProc.Args
-            | Rust, Naming.placeholder ->
-                let lastFileDir = IO.Path.GetDirectoryName(findLastFileFullPath ())
-
-                let args =
-                    match File.tryFindUpwards "Cargo.toml" lastFileDir with
-                    | Some path -> "--manifest-path" :: path :: runProc.Args
-                    | None -> runProc.Args
-
-                "cargo", "run" :: args
-            | Dart, Naming.placeholder ->
-                let lastFilePath = findLastFileRelativePath ()
-                "dart", "run" :: lastFilePath :: runProc.Args
             | JavaScript, Naming.placeholder ->
                 let lastFilePath = findLastFileRelativePath ()
                 "node", lastFilePath :: runProc.Args
             | (JavaScript | TypeScript), exeFile ->
                 File.tryNodeModulesBin workingDir exeFile |> Option.defaultValue exeFile, runProc.Args
-            | _, exeFile -> exeFile, runProc.Args
 
         if Option.isSome state.Watcher then
             Process.startWithEnv cliArgs.RunProcessEnv workingDir exeFile args
