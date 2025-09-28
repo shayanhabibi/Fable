@@ -3,6 +3,7 @@ namespace Fable.AST
 open System
 
 /// Each Position object consists of a line number (1-indexed) and a column number (0-indexed):
+[<Struct>]
 type Position =
     {
         line: int
@@ -15,6 +16,7 @@ type Position =
             column = 0
         }
 
+[<Struct>]
 type SourceLocation =
     {
         start: Position
