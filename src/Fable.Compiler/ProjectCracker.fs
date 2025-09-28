@@ -488,7 +488,7 @@ let getCrackedMainFsproj (opts: CrackerOptions) (projectOptionsResponse: Project
             else if line = "--warnaserror" then
                 src, otherOpts, true
             else
-                let (src, otherOpts) = extractUsefulOptionsAndSources true line (src, otherOpts)
+                let src, otherOpts = extractUsefulOptionsAndSources true line (src, otherOpts)
                 src, otherOpts, treatWarningsAsErrors
         )
 
@@ -527,7 +527,7 @@ let getProjectOptionsFromScript (opts: CrackerOptions) : CrackedFsproj =
     let projOpts, _diagnostics = // TODO: Check diagnostics
         let checker = FSharpChecker.Create()
 
-        let text = File.readAllTextNonBlocking (projectFilePath) |> SourceText.ofString
+        let text = File.readAllTextNonBlocking projectFilePath |> SourceText.ofString
 
         checker.GetProjectOptionsFromScript(projectFilePath, text, useSdkRefs = true, assumeDotNetFramework = false)
         |> Async.RunSynchronously
@@ -717,27 +717,6 @@ let copyFableLibraryAndPackageSources (opts: CrackerOptions) (pkgs: FablePackage
 
     getFableLibraryPath opts true, pkgRefs
 
-// Separate handling for Python. Use plain lowercase package names without dots or version info.
-let copyFableLibraryAndPackageSourcesPy (opts: CrackerOptions) (pkgs: FablePackage list) =
-    let pkgRefs =
-        pkgs
-        |> List.map (fun pkg ->
-            let sourceDir = IO.Path.GetDirectoryName(pkg.FsprojPath)
-
-            let targetDir =
-                let name = Naming.applyCaseRule Core.CaseRules.SnakeCase pkg.Id
-
-                IO.Path.Combine(opts.FableModulesDir, name.Replace(".", "_").Replace("-", "_"))
-
-            copyDirIfDoesNotExist false sourceDir targetDir
-
-            { pkg with FsprojPath = IO.Path.Combine(targetDir, IO.Path.GetFileName(pkg.FsprojPath)) }
-        )
-
-    let shouldCopy = true
-
-    getFableLibraryPath opts shouldCopy, pkgRefs
-
 // See #1455: F# compiler generates *.AssemblyInfo.fs in obj folder, but we don't need it
 let removeFilesInObjFolder (sourceFiles: string[]) =
     let reg = Regex(@"[\\\/]obj[\\\/]")
@@ -793,7 +772,7 @@ let loadPrecompiledInfo (opts: CrackerOptions) otherOptions sourceFiles =
                         |> List.map (fun f -> "    " + File.relPathToCurDir f)
                         |> String.concat Log.newLine
                     // TODO: This should likely be an error but make it a warning for now
-                    Log.warning ($"Detected outdated files in precompiled lib:{Log.newLine}{outdated}")
+                    Log.warning $"Detected outdated files in precompiled lib:{Log.newLine}{outdated}"
         with er ->
             Log.warning ("Cannot check timestamp of precompiled files: " + er.Message)
 

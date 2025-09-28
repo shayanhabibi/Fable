@@ -925,7 +925,7 @@ module AST =
         match t with
         | Measure _
         | GenericParam(_, true, _) -> true
-        | Fable.DeclaredType(ent, _) ->
+        | DeclaredType(ent, _) ->
             match ent.FullName with
             | Types.measureProduct2
             | Types.measureOne
@@ -1698,7 +1698,7 @@ module AST =
     // depth-first search
     let rec tryFindExprDFS (f: Expr -> bool) (e: Expr) =
         getSubExpressions e
-        |> List.tryPick (fun e2 -> tryFindExprDFS f e2)
+        |> List.tryPick (tryFindExprDFS f)
         |> Option.orElse (
             if f e then
                 Some e
@@ -1717,8 +1717,8 @@ module AST =
     let extractGenericArgs (maybeGenericExpr: Expr) concreteType =
         let rec extractGenericArgs genArgs maybeGenericType concreteType =
             match maybeGenericType, concreteType with
-            | Fable.GenericParam(name = name1), Fable.GenericParam(name = name2) when name1 = name2 -> genArgs
-            | Fable.GenericParam(name = name), t -> Map.add name t genArgs
+            | GenericParam(name = name1), GenericParam(name = name2) when name1 = name2 -> genArgs
+            | GenericParam(name = name), t -> Map.add name t genArgs
             | t1, t2 ->
                 match t1.Generics with
                 | [] -> genArgs

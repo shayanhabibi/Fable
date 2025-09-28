@@ -93,7 +93,7 @@ let tests = testList "Strings" [
         sb.ToString(2, 2) |> equal "ll"
 
     testCase "StringBuilder.Clear works" <| fun () ->
-        let sb = new System.Text.StringBuilder()
+        let sb = System.Text.StringBuilder()
         sb.Append("1111") |> ignore
         sb.Clear() |> ignore
         sb.ToString() |> equal ""

@@ -267,11 +267,11 @@ module JsOptions =
         abstract member topValueB: int with get, set
 
 
-[<Fable.Core.AttachMembers>]
+[<AttachMembers>]
 type ClassWithAttachments(v, ?sign) =
     static let secretSauce = "wasabi"
     let mutable x = v
-    member _.Times with get() = x and set(y) = x <- x + y
+    member _.Times with get() = x and set y = x <- x + y
     member this.SaySomethingTo(name: string, ?format) =
         let sign = defaultArg sign "!"
         let format = defaultArg format ClassWithAttachments.GreetingFormat
@@ -287,7 +287,7 @@ type ClassWithAttachmentsChild() =
     inherit ClassWithAttachments(3, "?")
     member this.dileHola(name) = this.SaySomethingTo(name, "Hola, {0}")
 
-[<Fable.Core.AttachMembers>]
+[<AttachMembers>]
 type ClassWithAttachmentsChild2() =
     inherit ClassWithAttachments(3, "?")
     member this.dileHola(name) = this.SaySomethingTo(name, "Hola, {0}")

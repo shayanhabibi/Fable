@@ -577,7 +577,7 @@ let uncurryExprAtRuntime (com: Compiler) arity (expr: Expr) =
     match expr with
     | Value(Null _, _) -> expr
     | Value(NewOption(value, t, isStruct), r) ->
-        let t = Fable.DelegateType(uncurryLambdaType arity [] t)
+        let t = DelegateType(uncurryLambdaType arity [] t)
 
         match value with
         | None -> Value(NewOption(None, t, isStruct), r)
@@ -615,7 +615,7 @@ let (|IsByRefType|_|) (com: Compiler) =
         let ent = com.GetEntity(entRef)
 
         match ent.IsByRef, genArgs with
-        | true, (genArg :: _) -> Some genArg
+        | true, genArg :: _ -> Some genArg
         | _ -> None
     | _ -> None
 
@@ -657,8 +657,8 @@ let (|IsReferenceType|_|) (com: Compiler) (t: Type) =
             Some t
 
     | GenericParam(_name, _isMeasure, constraints) ->
-        let isNullable = constraints |> List.contains Fable.Constraint.IsNullable
-        let isReferenceType = constraints |> List.contains Fable.Constraint.IsReferenceType
+        let isNullable = constraints |> List.contains Constraint.IsNullable
+        let isReferenceType = constraints |> List.contains Constraint.IsReferenceType
 
         if isNullable || isReferenceType then
             Some t
@@ -702,8 +702,8 @@ let rec (|HasReferenceEquality|_|) (com: Compiler) (t: Type) =
     | AnonymousRecordType _ -> None
 
     | GenericParam(_name, _isMeasure, constraints) ->
-        let isNullable = constraints |> List.contains Fable.Constraint.IsNullable
-        let isReferenceType = constraints |> List.contains Fable.Constraint.IsReferenceType
+        let isNullable = constraints |> List.contains Constraint.IsNullable
+        let isReferenceType = constraints |> List.contains Constraint.IsReferenceType
 
         if isNullable || isReferenceType then
             Some t
@@ -827,7 +827,7 @@ let rec (|MaybeInScopeStringConst|_|) ctx =
     | MaybeInScope ctx expr ->
         match expr with
         | StringConst s -> Some s
-        | Operation(Binary(BinaryPlus, (MaybeInScopeStringConst ctx s1), (MaybeInScopeStringConst ctx s2)), _, _, _) ->
+        | Operation(Binary(BinaryPlus, MaybeInScopeStringConst ctx s1, MaybeInScopeStringConst ctx s2), _, _, _) ->
             Some(s1 + s2)
         | Value(StringTemplate(None, start :: parts, values), _) ->
             (Some [], values)
@@ -935,7 +935,7 @@ let (|UniversalFableCoreHelpers|_|) (com: ICompiler) (ctx: Context) r t (i: Call
     | "nameofLambda"
     | "namesofLambda" as meth ->
         match args with
-        | [ MaybeInScope ctx (Lambda(_, (Namesof com ctx names), _)) ] -> Some names
+        | [ MaybeInScope ctx (Lambda(_, Namesof com ctx names, _)) ] -> Some names
         | _ -> None
         |> Option.defaultWith (fun () ->
             "Cannot infer name of expression" |> addError com ctx.InlinePath r
@@ -1046,8 +1046,7 @@ module AnonRecords =
 
         match ty with
         | UType tys -> tys |> List.map makeType |> List.distinct
-        | OptionType(UType tys, isStruct) ->
-            tys |> List.map (fun t -> Fable.Option(makeType t, isStruct)) |> List.distinct
+        | OptionType(UType tys, isStruct) -> tys |> List.map (fun t -> Option(makeType t, isStruct)) |> List.distinct
         | _ -> makeType ty |> List.singleton
 
     and private (|OptionType|_|) (ty: FSharpType) =
@@ -1082,27 +1081,27 @@ module AnonRecords =
 
         let (|IntNumber|_|) =
             function
-            | Fable.Number((Int8 | UInt8 | Int16 | UInt16 | Int32 | UInt32), _) -> Some()
+            | Number((Int8 | UInt8 | Int16 | UInt16 | Int32 | UInt32), _) -> Some()
             | _ -> None
 
         let fitsIntoSingle (rules: Allow) (expected: Fable.Type) (actual: Fable.Type) =
             match expected, actual with
-            | Fable.Any, _ -> true
-            | _, Fable.Any when rules.HasFlag Allow.AlwaysAny ->
+            | Any, _ -> true
+            | _, Any when rules.HasFlag Allow.AlwaysAny ->
                 // Erased Unions are reduced to `Any`
                 // -> cannot distinguish between 'normal' Any (like 'obj')
                 // and Erased Union (like Erased Union with string field)
                 true
-            | IntNumber, Fable.Number(_, Fable.NumberInfo.IsEnum _) when rules.HasFlag Allow.EnumIntoInt ->
+            | IntNumber, Number(_, NumberInfo.IsEnum _) when rules.HasFlag Allow.EnumIntoInt ->
                 // the underlying type of enum in F# is uint32
                 // For practicality: allow in all uint & int fields
                 true
-            | Fable.Option(t1, _), Fable.Option(t2, _)
-            | Fable.Option(t1, _), t2
+            | Option(t1, _), Option(t2, _)
+            | Option(t1, _), t2
             | t1, t2 -> typeEquals false t1 t2
 
         let fitsIntoMulti (rules: Allow) (expected: Fable.Type list) (actual: Fable.Type) =
-            expected |> List.contains Fable.Any
+            expected |> List.contains Any
             || (
             // special treatment for actual=Any & multiple expected:
             // multiple expected -> `Ux<...>` -> extracted types
@@ -1110,7 +1109,7 @@ module AnonRecords =
             //      -> no way to distinguish Ux (or other Erased Unions) from 'normal` Any (like obj)
             //rules.HasFlag Allow.AnyIntoErased
             //&&
-            expected |> List.isMultiple && actual = Fable.Any)
+            expected |> List.isMultiple && actual = Any)
             || expected |> List.exists (fun expected -> fitsIntoSingle rules expected actual)
 
         fitsIntoMulti rules expected actual
@@ -1184,7 +1183,7 @@ module AnonRecords =
                         let expectedTypes = expectedTypes |> formatTypes
                         $"Expected any type of [{expectedTypes}] for field '{fieldName}' because of Indexer '{indexerName}' in interface '{interfaceName}', but is '{actualType}'"
                 | _ ->
-                    let indexerNames = indexers |> List.map (quote) |> String.concat "; "
+                    let indexerNames = indexers |> List.map quote |> String.concat "; "
 
                     match expectedTypes with
                     | [] -> unreachable ()
@@ -1202,7 +1201,7 @@ module AnonRecords =
     /// Returns: errors
     let private fitsInterfaceMembers
         range
-        (argExprs: Fable.Expr list)
+        (argExprs: Expr list)
         fieldNames
         (interface_: FSharpEntity)
         (fieldsToIgnore: Set<string>)
@@ -1226,7 +1225,7 @@ module AnonRecords =
                             expectedTypes
                             |> List.forall (
                                 function
-                                | Fable.Option _ -> true
+                                | Option _ -> true
                                 | _ -> false
                             )
                         then
@@ -1237,7 +1236,7 @@ module AnonRecords =
                         let expr = List.item i argExprs
                         let ty = expr.Type
 
-                        if ty |> fitsInto (Allow.TheUsual (*||| Allow.AnyIntoErased*) ) expectedTypes then
+                        if ty |> fitsInto Allow.TheUsual expectedTypes then
                             None
                         else
                             formatUnexpectedTypeError range interface_ None m.DisplayName expectedTypes ty expr.Range
@@ -1247,7 +1246,7 @@ module AnonRecords =
     /// Returns errors
     let private fitsInterfaceIndexers
         range
-        (argExprs: Fable.Expr list)
+        (argExprs: Expr list)
         fieldNames
         (interface_: FSharpEntity)
         (fieldsToIgnore: Set<string>)
@@ -1272,7 +1271,7 @@ module AnonRecords =
 
         match validTypes with
         | [] -> [] // no indexer
-        | _ when validTypes |> List.contains Fable.Any -> []
+        | _ when validTypes |> List.contains Any -> []
         | _ ->
             List.zip (fieldNames |> Array.toList) argExprs
             |> List.filter (fun (fieldName, _) -> fieldsToIgnore |> Set.contains fieldName |> not)
@@ -1297,9 +1296,9 @@ module AnonRecords =
     let fitsInInterface
         (_com: IFableCompiler)
         (range: SourceLocation option)
-        (argExprs: Fable.Expr list)
+        (argExprs: Expr list)
         (fieldNames: string array)
-        (interface_: Fable.Entity)
+        (interface_: Entity)
         =
         match interface_ with
         | :? FsEnt as fsEnt ->

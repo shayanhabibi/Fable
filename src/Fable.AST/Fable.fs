@@ -356,7 +356,7 @@ type GeneratedMember =
         member this.FullName = this.Info.Name
 
         member this.GenericParameters =
-            this.Info.ParamTypes |> List.collect (fun t -> GeneratedMember.GenericParams(t))
+            this.Info.ParamTypes |> List.collect GeneratedMember.GenericParams
 
         member this.CurriedParameterGroups =
             [

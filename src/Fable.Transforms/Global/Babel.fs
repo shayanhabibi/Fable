@@ -608,7 +608,7 @@ module Helpers =
             (parameters, body: Expression, ?returnType, ?typeParameters, ?loc)
             : Expression
             =
-            let body = BlockStatement [| Statement.returnStatement (body) |]
+            let body = BlockStatement [| Statement.returnStatement body |]
 
             Expression.arrowFunctionExpression (
                 parameters,

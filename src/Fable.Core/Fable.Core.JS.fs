@@ -1,6 +1,7 @@
 namespace Fable.Core
 
-#nowarn "1182"
+#nowarn 1182 // ignore unused variable warning
+
 
 open System
 open System.Text.RegularExpressions

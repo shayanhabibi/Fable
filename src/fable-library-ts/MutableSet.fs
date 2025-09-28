@@ -27,7 +27,7 @@ type MutableSet<'T when 'T: equality>(items: 'T seq, comparer: IEqualityComparer
 
     member private this.TryFind(k) =
         match this.TryFindIndex(k) with
-        | true, h, i when i > -1 -> Some hashMap.[h].[i]
+        | true, h, i when i > -1 -> Some hashMap[h].[i]
         | _, _, _ -> None
 
     member this.Comparer = comparer
@@ -46,10 +46,10 @@ type MutableSet<'T when 'T: equality>(items: 'T seq, comparer: IEqualityComparer
         match this.TryFindIndex(k) with
         | true, h, i when i > -1 -> false
         | true, h, _ ->
-            hashMap.[h].Add(k) |> ignore
+            hashMap[h].Add(k) |> ignore
             true
         | false, h, _ ->
-            hashMap.[h] <- ResizeArray([| k |])
+            hashMap[h] <- ResizeArray([| k |])
             true
 
     member this.Contains(k) =
@@ -60,7 +60,7 @@ type MutableSet<'T when 'T: equality>(items: 'T seq, comparer: IEqualityComparer
     member this.Remove(k) =
         match this.TryFindIndex(k) with
         | true, h, i when i > -1 ->
-            hashMap.[h].RemoveAt(i)
+            hashMap[h].RemoveAt(i)
             true
         | _, _, _ -> false
 
@@ -70,7 +70,7 @@ type MutableSet<'T when 'T: equality>(items: 'T seq, comparer: IEqualityComparer
     // Native JS Set (used for primitive keys) doesn't work with `JSON.stringify` but
     // let's add `toJSON` for consistency with the types within fable-library.
     interface Fable.Core.IJsonSerializable with
-        member this.toJSON() = Helpers.arrayFrom (this)
+        member this.toJSON() = Helpers.arrayFrom this
 
 
     interface System.Collections.IEnumerable with
@@ -88,7 +88,7 @@ type MutableSet<'T when 'T: equality>(items: 'T seq, comparer: IEqualityComparer
         member this.Contains(item: 'T) : bool = this.Contains item
 
         member this.CopyTo(array: 'T[], arrayIndex: int) : unit =
-            this |> Seq.iteri (fun i e -> array.[arrayIndex + i] <- e)
+            this |> Seq.iteri (fun i e -> array[arrayIndex + i] <- e)
 
         member this.Count: int = this.Count
         member this.IsReadOnly: bool = false

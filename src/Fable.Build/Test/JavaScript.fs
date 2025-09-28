@@ -164,10 +164,9 @@ let handle (args: string list) =
     let noDotnet = args |> List.contains "--no-dotnet"
 
     match (isReactOnly, isStandaloneOnly, isAdaptiveOnly) with
-    | (true, true, _)
-    | (true, _, true)
-    | (_, true, true) ->
-        failwith "Cannot use '--react-only', '--standalone-only' and '--adaptive-only' at the same time"
+    | true, true, _
+    | true, _, true
+    | _, true, true -> failwith "Cannot use '--react-only', '--standalone-only' and '--adaptive-only' at the same time"
 
     | _ -> ()
 

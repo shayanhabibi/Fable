@@ -93,7 +93,7 @@ let tests =
                 member _.Equals(s1: string, s2: string) =
                     s1.Equals(s2, System.StringComparison.InvariantCultureIgnoreCase)
                 member _.GetHashCode(s: string) = s.ToLowerInvariant().GetHashCode() }
-        let set = new HashSet<string>(["Foo"; "bar"], ignoreCase)
+        let set = HashSet<string>(["Foo"; "bar"], ignoreCase)
         set.Contains("foo") |> equal true
         set.Contains("Foo") |> equal true
         set.Contains("bar") |> equal true
@@ -219,8 +219,8 @@ let tests =
     testCase "HashSet equality works with generics" <| fun () -> // See #1712
         let apa = Apa<R>()
         apa.Add({ i = 5; s = "foo"})
-        apa.Contains ({ i = 5; s = "foo"}) |> equal true
-        apa.Contains ({ i = 5; s = "fo"}) |> equal false
+        apa.Contains { i = 5; s = "foo"} |> equal true
+        apa.Contains { i = 5; s = "fo"} |> equal false
 
     testCase "HashSet IReadOnlyCollection.Count works" <| fun _ ->
         let xs = [| ("A", 1); ("B", 2); ("C", 3) |]

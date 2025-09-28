@@ -222,8 +222,8 @@ let tests2 = [
 open Aether
 open Aether.Operators
 
-let Lens_get (g, _) = fun o -> g o
-let Lens_set (_, s) = fun i o -> s i o
+let Lens_get (g, _) = g
+let Lens_set (_, s) = s
 let Lens_map (g, s) = fun f o -> s (f (g o)) o
 
 let chars : Isomorphism<string, char[]> =
@@ -452,7 +452,7 @@ type Parse =
         ) : 'enum
 
     static member Parse (_: bool              , _: Parse) = fun (x:string) -> Boolean.Parse (x)
-    static member Parse (_: char              , _: Parse) = fun  x -> Char.Parse (x)
+    static member Parse (_: char              , _: Parse) = Char.Parse
     static member Parse (_: string            , _: Parse) = id : string->_
     static member Parse (_: Text.StringBuilder, _: Parse) = fun  x -> new Text.StringBuilder (x: string)
 
@@ -575,7 +575,7 @@ let tests5 = [
 
     testCase "Arity is checked also when constructing records" <| fun () ->
         let f i j = (i * 2) + (j * 3)
-        let r = { arity2 = fun x -> f x >> fun y -> sprintf "foo%i" y }
+        let r = { arity2 = fun x -> f x >> sprintf "foo%i" }
         r.arity2 4 5 |> equal "foo23"
 
     testCase "Aether with generics works" <| fun () -> // See #750

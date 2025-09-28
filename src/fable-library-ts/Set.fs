@@ -560,7 +560,7 @@ module SetTree =
         // This must be inlined to activate tail call recursion in Fable
         let inline cont () =
             match l1, l2 with
-            | (Some x1 :: t1), _ ->
+            | Some x1 :: t1, _ ->
                 match x1 with
                 | :? SetTreeNode<'T> as x1n ->
                     compareStacks
@@ -570,7 +570,7 @@ module SetTree =
                          :: t1)
                         l2
                 | _ -> compareStacks comparer (empty :: (SetTreeLeaf x1.Key |> Some) :: t1) l2
-            | _, (Some x2 :: t2) ->
+            | _, Some x2 :: t2 ->
                 match x2 with
                 | :? SetTreeNode<'T> as x2n ->
                     compareStacks
@@ -586,10 +586,10 @@ module SetTree =
         | [], [] -> 0
         | [], _ -> -1
         | _, [] -> 1
-        | (None :: t1), (None :: t2) -> compareStacks comparer t1 t2
-        | (None :: t1), (Some x2 :: t2) -> cont ()
-        | (Some x1 :: t1), (None :: t2) -> cont ()
-        | (Some x1 :: t1), (Some x2 :: t2) ->
+        | None :: t1, None :: t2 -> compareStacks comparer t1 t2
+        | None :: t1, Some x2 :: t2 -> cont ()
+        | Some x1 :: t1, None :: t2 -> cont ()
+        | Some x1 :: t1, Some x2 :: t2 ->
             match x1 with
             | :? SetTreeNode<'T> as x1n ->
                 if isEmpty x1n.Left then
@@ -662,7 +662,7 @@ module SetTree =
 
         iter
             (fun x ->
-                arr.[j] <- x
+                arr[j] <- x
                 j <- j + 1
             )
             s
@@ -791,7 +791,7 @@ type Set<[<EqualityConditionalOn>] 'T when 'T: comparison>(comparer: IComparer<'
             Set(s.Comparer, SetTree.filter s.Comparer f s.Tree)
 
     member s.Map(f, [<Inject>] comparer: IComparer<'U>) : Set<'U> =
-        Set(comparer, SetTree.fold (fun acc k -> SetTree.add comparer (f k) acc) (SetTree.empty) s.Tree)
+        Set(comparer, SetTree.fold (fun acc k -> SetTree.add comparer (f k) acc) SetTree.empty s.Tree)
 
     member s.Exists f = SetTree.exists f s.Tree
 
@@ -884,7 +884,7 @@ type Set<[<EqualityConditionalOn>] 'T when 'T: comparison>(comparer: IComparer<'
         member _.``Symbol.toStringTag`` = "FSharpSet"
 
     interface IJsonSerializable with
-        member this.toJSON() = Helpers.arrayFrom (this)
+        member this.toJSON() = Helpers.arrayFrom this
 
     interface System.IComparable with
         member this.CompareTo(other: obj) =
@@ -1078,7 +1078,7 @@ let intersectWith (s1: JS.Set<'T>) (s2: 'T seq) =
 
     s1.values ()
     |> Seq.iter (fun x ->
-        if not (s2.has (x)) then
+        if not (s2.has x) then
             s1.delete x |> ignore
     )
 

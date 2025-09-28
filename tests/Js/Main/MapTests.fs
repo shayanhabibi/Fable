@@ -262,14 +262,14 @@ let tests =
 
         testCase "Map can be casted to IDictionary" <| fun () -> // See #1729, #1857
             let map = Map [ "a", 1; "b", 2; "c", 3]
-            let dic = map :> System.Collections.Generic.IDictionary<_,_>
+            let dic = map :> IDictionary<_,_>
             dic.TryGetValue("c") |> equal (true,3)
             dic.TryGetValue("d") |> fst |> equal false
             dic.Keys |> Seq.toList |> equal ["a"; "b"; "c"]
             dic.Values |> Seq.toList |> equal [1; 2; 3]
 
         testCase "KeyValuePair can be referenced" <| fun () ->
-            let r2 = { kv = new KeyValuePair<_,_>("bar",25) }
+            let r2 = { kv = KeyValuePair<_,_>("bar",25) }
             r2.kv.Key |> equal "bar"
             r2.kv.Value |> equal 25
 

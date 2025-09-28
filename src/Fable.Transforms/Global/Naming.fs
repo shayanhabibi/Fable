@@ -78,7 +78,7 @@ module Naming =
         let mutable found = false
 
         for i = 0 to ident.Length - 1 do
-            found <- found || not (isIdentChar i ident.[i])
+            found <- found || not (isIdentChar i ident[i])
 
         found
 
@@ -87,7 +87,7 @@ module Naming =
             Seq.init
                 ident.Length
                 (fun i ->
-                    let c = ident.[i]
+                    let c = ident[i]
 
                     if isIdentChar i c then
                         string<char> c
@@ -131,13 +131,13 @@ module Naming =
 
     let replacePrefix (prefix: string) (value: string) (input: string) =
         if input.StartsWith(prefix, StringComparison.Ordinal) then
-            value + (input.Substring(prefix.Length))
+            value + input.Substring(prefix.Length)
         else
             input
 
     let replaceSuffix (suffix: string) (value: string) (input: string) =
         if input.EndsWith(suffix, StringComparison.Ordinal) then
-            (input.Substring(0, input.Length - suffix.Length)) + value
+            input.Substring(0, input.Length - suffix.Length) + value
         else
             input
 
@@ -500,13 +500,13 @@ module Naming =
 
     // Ported to F# from https://github.com/microsoft/referencesource/blob/master/System.Web/Util/HttpEncoder.cs#L391
     let escapeString charRequiresEncoding (value: string) : string =
-        if (String.IsNullOrEmpty(value)) then
+        if String.IsNullOrEmpty(value) then
             String.Empty
         else
             let sb = System.Text.StringBuilder(value.Length)
 
             for i = 0 to value.Length - 1 do
-                match value.[i] with
+                match value[i] with
                 | '\'' -> sb.Append("\\\'") |> ignore
                 | '\"' -> sb.Append("\\\"") |> ignore
                 | '\\' -> sb.Append("\\\\") |> ignore
@@ -517,7 +517,7 @@ module Naming =
                 | '\f' -> sb.Append("\\f") |> ignore
                 | c when
                     charRequiresEncoding c
-                    || c < (char) 0x20 // other control chars
+                    || c < char 0x20 // other control chars
                     || c = '\u0085' // other newline chars
                     || c = '\u2028'
                     || c = '\u2029'

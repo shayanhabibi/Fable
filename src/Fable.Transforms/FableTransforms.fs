@@ -464,7 +464,7 @@ module private Transforms =
 
         | Operation(Unary(AST.UnaryNot, Value(BoolConstant b, r)), [], _, _) -> Value(BoolConstant(not b), r)
 
-        | Operation(Binary((AST.BinaryEqual | AST.BinaryUnequal as op), v1, v2), [], _, _) ->
+        | Operation(Binary(AST.BinaryEqual | AST.BinaryUnequal as op, v1, v2), [], _, _) ->
             let isNot = op = AST.BinaryUnequal
 
             tryEqualsAtCompileTime v1 v2
@@ -850,7 +850,7 @@ let rec transformDeclaration transformations (com: Compiler) file decl =
                         match m.Body.Type with
                         | Arity arity when arity > 1 ->
                             m.ImplementedSignatureRef
-                            |> Option.bind (com.TryGetMember)
+                            |> Option.bind com.TryGetMember
                             |> Option.bind (fun memb ->
                                 if isGetterOrValueWithoutGenerics memb then
                                     match memb.ReturnParameter.Type with
@@ -905,10 +905,10 @@ let rec transformDeclaration transformations (com: Compiler) file decl =
         }
         |> ClassDeclaration
 
-let transformFile (com: Compiler) (file: Fable.AST.Fable.File) =
+let transformFile (com: Compiler) (file: File) =
     let transformations = getTransformations com
 
     let newDecls =
         List.map (transformDeclaration transformations com file) file.Declarations
 
-    Fable.AST.Fable.File(newDecls, usedRootNames = file.UsedNamesInRootScope)
+    File(newDecls, usedRootNames = file.UsedNamesInRootScope)

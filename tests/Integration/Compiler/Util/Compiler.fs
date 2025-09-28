@@ -92,9 +92,9 @@ module Compiler =
         match e.Value with
         | "" ->
           if txt.Length >= 1 then
-            (txt.[0] |> Char.ToUpperInvariant |> string)
+            (txt[0] |> Char.ToUpperInvariant |> string)
             +
-            txt.[1..]
+            txt[1..]
           else
             ""
         | msg -> msg + " " + txt

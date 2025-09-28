@@ -186,7 +186,7 @@ module Evaluator =
           let ops = dict [ '+', (+); '-', (-); '*', (*); '/', (/) ]
           evaluate visited cells l |> Option.bind (fun l ->
             evaluate visited cells r |> Option.map (fun r ->
-              ops.[op] l r ))
+              ops[op] l r ))
 
       | Reference pos when Set.contains pos visited ->
           None
@@ -257,8 +257,8 @@ let getPosition ((col, row): Position) (direction: Direction) : Position =
 let getMovement (state: State) (direction: Direction) : Movement =
     match state.Active with
         | None -> Invalid
-        | (Some position) ->
-            let (col, row) = getPosition position direction
+        | Some position ->
+            let col, row = getPosition position direction
             if List.contains col state.Cols && List.contains row state.Rows
                 then MoveTo (col, row)
                 else Invalid
@@ -330,7 +330,7 @@ open Feliz
 
 [<ReactComponent>]
 let SpreadSheet() =
-    let (state, setState) = React.useState(initial)
+    let state, setState = React.useState(initial)
     let trigger ev =
       update ev state |> setState
     view state trigger

@@ -1,7 +1,6 @@
 namespace Fable.Compiler
 
 open System
-open System.Reflection
 open System.IO
 open System.Diagnostics
 open System.Text.Json
@@ -188,7 +187,7 @@ Exception:
 type MSBuildCrackerResolver() =
 
     interface ProjectCrackerResolver with
-        member _.GetProjectOptionsFromProjectFile(isMain, options: CrackerOptions, projectFile) =
+        member _.GetProjectOptionsFromProjectFile(_isMain, options: CrackerOptions, projectFile) =
             let fsproj = FileInfo projectFile
 
             if not fsproj.Exists then

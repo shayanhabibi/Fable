@@ -57,7 +57,7 @@ type LinkedList<'T> =
         | Some t -> t
 
     member xs.Item
-        with get (index) =
+        with get index =
             let rec loop i (xs: 'T list) =
                 match xs.tail with
                 | None -> invalidArg "index" SR.indexOutOfBounds
@@ -110,7 +110,7 @@ type LinkedList<'T> =
         loop 0 0 xs
 
     interface IJsonSerializable with
-        member this.toJSON() = Helpers.arrayFrom (this)
+        member this.toJSON() = Helpers.arrayFrom this
 
     interface System.IComparable with
         member xs.CompareTo(other: obj) =
@@ -150,7 +150,7 @@ and ListEnumerator<'T>(xs: 'T list) =
         member _.Current = current
 
     interface System.Collections.IEnumerator with
-        member _.Current = box (current)
+        member _.Current = box current
 
         member _.MoveNext() =
             match it.tail with
@@ -235,7 +235,7 @@ let toArray (xs: 'T list) =
 
     let rec loop i (xs: 'T list) =
         if not xs.IsEmpty then
-            res.[i] <- xs.Head
+            res[i] <- xs.Head
             loop (i + 1) xs.Tail
 
     loop 0 xs
@@ -335,7 +335,7 @@ let ofArrayWithTail (xs: 'T[]) (tail: 'T list) =
     let mutable res = tail
 
     for i = xs.Length - 1 downto 0 do
-        res <- List.Cons(xs.[i], res)
+        res <- List.Cons(xs[i], res)
 
     res
 
@@ -847,7 +847,7 @@ let exactlyOne (xs: 'T list) =
         invalidArg "list" SR.inputSequenceTooLong
 
 let tryExactlyOne (xs: 'T list) =
-    if not (xs.IsEmpty) && xs.Tail.IsEmpty then
+    if not xs.IsEmpty && xs.Tail.IsEmpty then
         Some(xs.Head)
     else
         None

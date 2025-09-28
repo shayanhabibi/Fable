@@ -227,8 +227,7 @@ module File =
                 tryFindUpwards fileName parent.FullName
 
     let rec tryFindPackageJsonDir dir =
-        tryFindUpwards "package.json" dir
-        |> Option.map (fun file -> Path.GetDirectoryName(file))
+        tryFindUpwards "package.json" dir |> Option.map Path.GetDirectoryName
 
     let tryNodeModulesBin workingDir exeFile =
         tryFindPackageJsonDir workingDir
@@ -399,8 +398,8 @@ module Process =
         for arg in args do
             psi.ArgumentList.Add(arg)
 
-        for (key, value) in envVars do
-            psi.EnvironmentVariables.[key] <- value
+        for key, value in envVars do
+            psi.EnvironmentVariables[key] <- value
 
         psi.WorkingDirectory <- workingDir
         psi.CreateNoWindow <- false
@@ -446,7 +445,7 @@ module Process =
             p.ExitCode
         with ex ->
             Log.always ("Cannot run: " + ex.Message)
-            Log.always (ex.StackTrace)
+            Log.always ex.StackTrace
             -1
 
     let runSync (workingDir: string) (exePath: string) (args: string list) =
@@ -508,7 +507,7 @@ module Async =
             disp <-
                 obs.Subscribe(fun v ->
                     disp.Dispose()
-                    onSuccess (v)
+                    onSuccess v
                 )
         )
 
@@ -579,7 +578,7 @@ module Imports =
             let m = Regex.Match(importPath, @"^\${(\w+)}[\/\\]?")
 
             if m.Success then
-                Some m.Groups.[1].Value, importPath.[m.Length ..]
+                Some m.Groups[1].Value, importPath[m.Length ..]
             else
                 None, importPath
 
@@ -743,7 +742,7 @@ module Json =
 
         override _.Read(reader, _typeToConvert, _options) =
             let i = reader.GetInt32()
-            pool.[i]
+            pool[i]
 
         override _.Write(_writer, _value, _options) = failwith "Read only"
 
@@ -794,7 +793,7 @@ module Json =
         let strings =
             let ext = Path.GetExtension(path)
 
-            let path = path.[0 .. path.Length - ext.Length - 1] + "_strings.json"
+            let path = path[0 .. path.Length - ext.Length - 1] + "_strings.json"
 
             let jsonReadOnlySpan: ReadOnlySpan<byte> = File.ReadAllBytes(path)
             JsonSerializer.Deserialize<string[]>(jsonReadOnlySpan)
@@ -818,7 +817,7 @@ module Json =
             let pool = pool.GetPool()
             let ext = Path.GetExtension(path)
 
-            let path = path.[0 .. path.Length - ext.Length - 1] + "_strings.json"
+            let path = path[0 .. path.Length - ext.Length - 1] + "_strings.json"
 
             use fileStream = new FileStream(path, FileMode.Create)
             use writer = new Utf8JsonWriter(fileStream)

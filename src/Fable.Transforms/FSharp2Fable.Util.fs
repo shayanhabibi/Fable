@@ -342,7 +342,7 @@ type FsMemberFunctionOrValue(m: FSharpMemberOrFunctionOrValue) =
 type FsEnt(maybeAbbrevEnt: FSharpEntity) =
     let ent = Helpers.nonAbbreviatedDefinition maybeAbbrevEnt
 
-    let members = lazy (ent.TryGetMembersFunctionsAndValues())
+    let members = lazy ent.TryGetMembersFunctionsAndValues()
 
     static let tryArrayFullName (ent: FSharpEntity) =
         if ent.IsArrayType then
@@ -530,7 +530,7 @@ type Context =
         CaughtException: Fable.Ident option
         BoundConstructorThis: Fable.Ident option
         BoundMemberThis: Fable.Ident option
-        InlinePath: Log.InlinePath list
+        InlinePath: InlinePath list
         CaptureBaseConsCall: (FSharpEntity * (Fable.Expr -> unit)) option
         Witnesses: Fable.Witness list
     }
@@ -739,7 +739,7 @@ module Helpers =
         ctx.UsedNamesInRootScope.Contains name
         || ctx.UsedNamesInDeclarationScope.Contains name
 
-    let getIdentUniqueName (com: Compiler) (ctx: Context) name =
+    let getIdentUniqueName (_com: Compiler) (ctx: Context) name =
         let sanitizeIdent = Naming.sanitizeJsIdent
 
         let name = (name, Naming.NoMemberPart) ||> sanitizeIdent (isUsedName ctx)
@@ -810,12 +810,12 @@ module Helpers =
 
     let tryBoolean: obj -> bool option =
         function
-        | (:? bool as x) -> Some x
+        | :? bool as x -> Some x
         | _ -> None
 
     let tryString: obj -> string option =
         function
-        | (:? string as x) -> Some x
+        | :? string as x -> Some x
         | _ -> None
 
     let tryDefinition (typ: FSharpType) =
@@ -848,9 +848,7 @@ module Helpers =
         )
 
     let parentHasSignatureFile (declaringEntity: FSharpEntity option) =
-        declaringEntity
-        |> Option.map (fun ent -> hasOwnSignatureFile ent)
-        |> Option.defaultValue false
+        declaringEntity |> Option.map hasOwnSignatureFile |> Option.defaultValue false
 
     let topLevelBindingHiddenBySignatureFile (v: FSharpMemberOrFunctionOrValue) =
         v.IsModuleValueOrMember
@@ -980,7 +978,7 @@ module Helpers =
 
         let getCaseRule (att: FSharpAttribute) =
             match Seq.tryHead att.ConstructorArguments with
-            | Some(_, (:? int as rule)) -> enum<CaseRules> (rule)
+            | Some(_, (:? int as rule)) -> enum<CaseRules> rule
             | _ -> CaseRules.LowerFirst
 
         unionCase.Attributes
@@ -1008,14 +1006,14 @@ module Helpers =
                             | Some(_, (:? string as name)), None ->
                                 Some(TypeScriptTaggedUnion(tdef, typ.GenericArguments, name, CaseRules.LowerFirst))
                             | Some(_, (:? string as name)), Some(_, (:? int as rule)) ->
-                                Some(TypeScriptTaggedUnion(tdef, typ.GenericArguments, name, enum<CaseRules> (rule)))
+                                Some(TypeScriptTaggedUnion(tdef, typ.GenericArguments, name, enum<CaseRules> rule))
                             | _ -> failwith "Invalid TypeScriptTaggedUnion attribute"
                         | _ -> None
                     )
                     |> Option.defaultValue (DiscriminatedUnion(tdef, typ.GenericArguments))
         )
 
-    let tryGetFieldTag (com: Compiler) (memb: FSharpMemberOrFunctionOrValue) = None
+    let tryGetFieldTag (_com: Compiler) (_memb: FSharpMemberOrFunctionOrValue) = None
 
 module Patterns =
     open FSharpExprPatterns
@@ -1029,13 +1027,13 @@ module Patterns =
 
     let (|CommonNamespace|_|) =
         function
-        | (FSharpImplementationFileDeclaration.Entity(ent, subDecls)) :: restDecls when ent.IsNamespace ->
+        | FSharpImplementationFileDeclaration.Entity(ent, subDecls) :: restDecls when ent.IsNamespace ->
             let commonName = ent.CompiledName
 
             (Some subDecls, restDecls)
             ||> List.fold (fun acc decl ->
                 match acc, decl with
-                | (Some subDecls), (FSharpImplementationFileDeclaration.Entity(ent, subDecls2)) ->
+                | Some subDecls, FSharpImplementationFileDeclaration.Entity(ent, subDecls2) ->
                     if ent.CompiledName = commonName then
                         Some(subDecls @ subDecls2)
                     else
@@ -1305,7 +1303,7 @@ module TypeHelpers =
 
     let resolveTypeLambdaGenArgs (ctx: Context) genArgs lambda =
         match lambda with
-        | FSharpExprPatterns.Lambda(arg, body) -> ctx // leave lambda context as is
+        | FSharpExprPatterns.Lambda(_, _) -> ctx // leave lambda context as is
         | _ ->
             // if not a lambda, resolve the type args not already in context to Fable.Any
             let newGenArgs = genArgs |> List.map (fun arg -> genParamName arg, Fable.Any)
@@ -1688,7 +1686,7 @@ module Identifiers =
             && (fsRef.CompiledName = "copyOfStruct" || fsRef.CompiledName = "inputRecord")
         )
 
-    let makeIdentFrom (com: IFableCompiler) (ctx: Context) (fsRef: FSharpMemberOrFunctionOrValue) : Fable.Ident =
+    let makeIdentFrom (_com: IFableCompiler) (ctx: Context) (fsRef: FSharpMemberOrFunctionOrValue) : Fable.Ident =
         let part = Naming.NoMemberPart
 
         let name =
@@ -1782,7 +1780,7 @@ module Util =
         =
         let parameters =
             match memberRef with
-            | Some(Fable.MemberRef(declaringEntity, memberInfo)) ->
+            | Some(Fable.MemberRef _) ->
                 memberRef
                 |> Option.bind com.TryGetMember
                 |> Option.map (fun memb -> memb.CurriedParameterGroups |> List.concat)
@@ -1939,10 +1937,10 @@ module Util =
 
             | AttFullName(Naming.StartsWith Atts.import _ as fullName, att) ->
                 match fullName, att.ConstructorArgs with
-                | Atts.importAll, [ (:? string as path) ] -> ImportAtt("*", path.Trim()) |> Some
-                | Atts.importDefault, [ (:? string as path) ] -> ImportAtt("default", path.Trim()) |> Some
-                | Atts.importMember, [ (:? string as path) ] -> ImportAtt(Naming.placeholder, path.Trim()) |> Some
-                | _, [ (:? string as selector); (:? string as path) ] -> ImportAtt(selector.Trim(), path.Trim()) |> Some
+                | Atts.importAll, [ :? string as path ] -> ImportAtt("*", path.Trim()) |> Some
+                | Atts.importDefault, [ :? string as path ] -> ImportAtt("default", path.Trim()) |> Some
+                | Atts.importMember, [ :? string as path ] -> ImportAtt(Naming.placeholder, path.Trim()) |> Some
+                | _, [ :? string as selector; :? string as path ] -> ImportAtt(selector.Trim(), path.Trim()) |> Some
                 | _ -> None
 
             | _ -> None
@@ -2047,7 +2045,7 @@ module Util =
             | _ -> false
         )
 
-    let isAttachMembersEntity (com: Compiler) (ent: FSharpEntity) =
+    let isAttachMembersEntity (_com: Compiler) (ent: FSharpEntity) =
         not (ent.IsFSharpModule || ent.IsInterface)
         && (ent.Attributes
             |> Seq.exists (fun att ->
@@ -2101,7 +2099,7 @@ module Util =
 
     let getEntityGenParams (ent: Fable.Entity) : (string * Fable.Type) list =
         ent.GenericParameters
-        |> List.filter (fun p -> not (p.IsMeasure))
+        |> List.filter (fun p -> not p.IsMeasure)
         |> List.map (fun p -> p.Name, Fable.Type.GenericParam(p.Name, p.IsMeasure, Seq.toList p.Constraints))
 
     let getEntityGenArgs (ent: Fable.Entity) : Fable.Type list = getEntityGenParams ent |> List.map snd
@@ -2112,7 +2110,7 @@ module Util =
 
     let getMemberGenParams (memb: Fable.MemberFunctionOrValue) : (string * Fable.Type) list =
         memb.GenericParameters
-        |> List.filter (fun p -> not (p.IsMeasure))
+        |> List.filter (fun p -> not p.IsMeasure)
         |> List.map (fun p -> p.Name, Fable.Type.GenericParam(p.Name, p.IsMeasure, Seq.toList p.Constraints))
 
     let getMemberGenArgs (memb: Fable.MemberFunctionOrValue) : Fable.Type list = getMemberGenParams memb |> List.map snd
@@ -2509,7 +2507,7 @@ module Util =
 
     let (|Emitted|_|)
         (com: Compiler)
-        (ctx: Context)
+        (_ctx: Context)
         r
         typ
         (callInfo: Fable.CallInfo option)
@@ -2667,8 +2665,8 @@ module Util =
                 let path = importInfo.Path
 
                 match importInfo.Selector, info.Args with
-                | sel, (StringConst selArg) :: (StringConst pathArg) :: args when sel = selArg && path = pathArg -> args
-                | ("default" | "*"), (StringConst pathArg) :: args when path = pathArg -> args
+                | sel, StringConst selArg :: StringConst pathArg :: args when sel = selArg && path = pathArg -> args
+                | ("default" | "*"), StringConst pathArg :: args when path = pathArg -> args
                 | _, args -> args
 
             // Don't apply args either if this is a class getter, see #2329
@@ -2707,7 +2705,7 @@ module Util =
 
     /// Removes optional arguments set to None in tail position
     let transformOptionalArguments
-        (com: IFableCompiler)
+        (_com: IFableCompiler)
         (_ctx: Context)
         (_r: SourceLocation option)
         (memb: FSharpMemberOrFunctionOrValue)

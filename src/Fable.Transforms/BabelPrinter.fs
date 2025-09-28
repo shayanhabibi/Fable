@@ -9,32 +9,32 @@ open Fable.Transforms.Printer
 module PrinterExtensions =
     let rec hasSideEffects (e: Expression) =
         match e with
-        | Undefined(_)
-        | Literal(NullLiteral(_))
-        | Literal(Literal.StringLiteral(_))
-        | Literal(BooleanLiteral(_))
-        | Literal(NumericLiteral(_)) -> false
+        | Undefined _
+        | Literal(NullLiteral _)
+        | Literal(Literal.StringLiteral _)
+        | Literal(BooleanLiteral _)
+        | Literal(NumericLiteral _) -> false
         // Constructors of classes deriving from System.Object add an empty object at the end
         | ObjectExpression(properties, _loc) -> properties.Length > 0
-        | UnaryExpression(argument, "void", false, _loc) -> hasSideEffects (argument)
+        | UnaryExpression(argument, "void", false, _loc) -> hasSideEffects argument
         // Some identifiers may be stranded as the result of imports
         // intended only for side effects, see #2228
-        | Expression.Identifier(_) -> false
+        | Expression.Identifier _ -> false
         // Sometimes empty IIFE remain in the AST
-        | CallExpression(ArrowFunctionExpression(_, (BlockStatement body), _, _, _), _, _, _) ->
+        | CallExpression(ArrowFunctionExpression(_, BlockStatement body, _, _, _), _, _, _) ->
             body |> Array.exists isProductiveStatement
         | CommentedExpression(_, e) -> hasSideEffects e
         | _ -> true
 
     and isProductiveStatement (s: Statement) =
         match s with
-        | ExpressionStatement(expr) -> hasSideEffects (expr)
+        | ExpressionStatement(expr) -> hasSideEffects expr
         | _ -> true
 
     let (|UndefinedOrVoid|_|) =
         function
         | Undefined _ -> Some()
-        | UnaryExpression(argument, "void", false, _loc) when not (hasSideEffects (argument)) -> Some()
+        | UnaryExpression(argument, "void", false, _loc) when not (hasSideEffects argument) -> Some()
         | _ -> None
 
     let (|NullOrUndefinedOrVoid|_|) =
@@ -74,7 +74,7 @@ module PrinterExtensions =
                 printer.PrintNewLine()
 
         member printer.PrintProductiveStatement(s: Statement, ?printSeparator) =
-            if isProductiveStatement (s) then
+            if isProductiveStatement s then
                 printer.Print(s)
                 printSeparator |> Option.iter (fun f -> f printer)
 
@@ -185,7 +185,7 @@ module PrinterExtensions =
 
                         printer.PrintArray(
                             namedParamAnnotations.ToArray(),
-                            (fun printer ((Parameter.Parameter(name, _, flags)), annotation) ->
+                            (fun printer (Parameter.Parameter(name, _, flags), annotation) ->
                                 printer.Print(name)
 
                                 if flags.IsOptional then
@@ -287,7 +287,7 @@ module PrinterExtensions =
                 | CallExpression(callee, appliedArgs, _typeParameters, _) when parameters.Length = appliedArgs.Length ->
                     // To be sure we're not running side effects when deleting the function check the callee is an identifier
                     match callee with
-                    | Expression.Identifier(_) ->
+                    | Expression.Identifier _ ->
                         Array.zip parameters appliedArgs
                         |> Array.forall (
                             function
@@ -320,10 +320,10 @@ module PrinterExtensions =
                 match body.Body with
                 | [| ReturnStatement(argument, _loc) |] ->
                     match argument with
-                    | ObjectExpression(_) -> printer.WithParens(argument)
+                    | ObjectExpression _ -> printer.WithParens(argument)
                     | MemberExpression(object, property, isComputed, loc) ->
                         match object with
-                        | ObjectExpression(_) ->
+                        | ObjectExpression _ ->
                             printer.PrintMemberExpression(object, property, isComputed, loc, objectWithParens = true)
                         | _ -> printer.Print(argument)
                     | _ -> printer.ComplexExpressionWithParens(argument)
@@ -734,7 +734,7 @@ module PrinterExtensions =
                 printer.Print("export * from ", ?loc = loc)
                 printer.PrintLiteral(source)
             | PrivateModuleDeclaration(statement) ->
-                if isProductiveStatement (statement) then
+                if isProductiveStatement statement then
                     printer.Print(statement)
             | ExportDefaultDeclaration(declaration) ->
                 match declaration with
@@ -1180,7 +1180,7 @@ module PrinterExtensions =
 
             match objectWithParens, object with
             | Some true, _
-            | _, Literal(NumericLiteral(_)) -> printer.WithParens(object)
+            | _, Literal(NumericLiteral _) -> printer.WithParens(object)
             | _ -> printer.ComplexExpressionWithParens(object)
 
             if isComputed then
@@ -1334,8 +1334,7 @@ module PrinterExtensions =
                 | ClassSetter(key, isComputed)
                 | ClassGetter(key, isComputed)
                 | ClassFunction(key, isComputed) -> key, isComputed, [||]
-                | ClassPrimaryConstructor accessModifiers ->
-                    Expression.identifier ("constructor"), false, accessModifiers
+                | ClassPrimaryConstructor accessModifiers -> Expression.identifier "constructor", false, accessModifiers
 
             if isComputed then
                 printer.Print("[")
@@ -1498,7 +1497,7 @@ module PrinterExtensions =
                 printer.Print("]")
             | LiteralTypeAnnotation lit -> printer.PrintLiteral(lit)
 
-        member printer.Print((TypeParameter(name, bound, _default)): TypeParameter) =
+        member printer.Print(TypeParameter(name, bound, _default): TypeParameter) =
             printer.Print(name)
             printer.PrintOptional(bound, " extends ")
         // printer.PrintOptional(``default``)
@@ -1591,7 +1590,7 @@ let run writer (program: Program) : Async<unit> =
             restDecls
             |> Array.splitWhile (
                 function
-                | ImportDeclaration(_) -> true
+                | ImportDeclaration _ -> true
                 | _ -> false
             )
 

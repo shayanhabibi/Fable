@@ -42,14 +42,14 @@ type PollingFileWatcher(watchedDirectoryPath, ignoredDirectoryNameRegexes) =
     // The minimum interval to rerun the scan
     let minRunInternal = TimeSpan.FromSeconds(0.5)
 
-    let watchedDirectory = new DirectoryInfo(watchedDirectoryPath)
+    let watchedDirectory = DirectoryInfo(watchedDirectoryPath)
 
-    let mutable knownEntities = new Dictionary<string, FileMeta>()
-    let mutable tempDictionary = new Dictionary<string, FileMeta>()
-    let changes = new HashSet<string>()
+    let mutable knownEntities = Dictionary<string, FileMeta>()
+    let mutable tempDictionary = Dictionary<string, FileMeta>()
+    let changes = HashSet<string>()
     let mutable knownEntitiesCount = 0
 
-    let onFileChange = new Event<string>()
+    let onFileChange = Event<string>()
     let mutable raiseEvents = false
     let mutable disposed = false
 
@@ -97,8 +97,8 @@ type PollingFileWatcher(watchedDirectoryPath, ignoredDirectoryNameRegexes) =
 
             if fileInfo.FullName <> watchedDirectory.FullName then
                 match fileInfo with
-                | :? FileInfo as file -> recordChange (file.Directory)
-                | :? DirectoryInfo as dir -> recordChange (dir.Parent)
+                | :? FileInfo as file -> recordChange file.Directory
+                | :? DirectoryInfo as dir -> recordChange dir.Parent
                 | _ -> ()
 
     let checkForChangedFiles () =
@@ -117,9 +117,9 @@ type PollingFileWatcher(watchedDirectoryPath, ignoredDirectoryNameRegexes) =
                         if fileMeta.FileInfo.LastWriteTime <> f.LastWriteTime then
                             recordChange f // File changed
 
-                        knownEntities.[fullFilePath] <- { fileMeta with FoundAgain = true }
+                        knownEntities[fullFilePath] <- { fileMeta with FoundAgain = true }
                     with :? FileNotFoundException ->
-                        knownEntities.[fullFilePath] <- { fileMeta with FoundAgain = false }
+                        knownEntities[fullFilePath] <- { fileMeta with FoundAgain = false }
                 // TryAdd instead of Add because sometimes we get duplicates (?!)
                 // (Saw multiple times on Linux. Not sure where it came from...)
                 tempDictionary.TryAdd(
@@ -133,8 +133,8 @@ type PollingFileWatcher(watchedDirectoryPath, ignoredDirectoryNameRegexes) =
             )
 
         for file in knownEntities do
-            if not (file.Value.FoundAgain) then
-                recordChange (file.Value.FileInfo) // File deleted
+            if not file.Value.FoundAgain then
+                recordChange file.Value.FileInfo // File deleted
 
         notifyChanges ()
 
@@ -181,7 +181,7 @@ type PollingFileWatcher(watchedDirectoryPath, ignoredDirectoryNameRegexes) =
         stopWatch.Stop()
 
     do
-        let pollingThread = new Thread(new ThreadStart(pollingLoop))
+        let pollingThread = Thread(ThreadStart(pollingLoop))
         pollingThread.IsBackground <- true
         pollingThread.Name <- nameof PollingFileWatcher
 
@@ -198,7 +198,7 @@ type PollingFileWatcher(watchedDirectoryPath, ignoredDirectoryNameRegexes) =
     /// Defaults to false. Must be set to true to start raising events.
     member this.EnableRaisingEvents
         with get () = raiseEvents
-        and set (value) =
+        and set value =
             if disposed then
                 raise (ObjectDisposedException(nameof PollingFileWatcher))
             else
@@ -221,11 +221,12 @@ type private WatcherInstance =
 /// implementing IFileSystemWatcher with its mutable BasePath.
 type ResetablePollingFileWatcher(fileNameGlobFilters, ignoredDirectoryNameRegexes) =
     let mutable disposed = false
-    let resetLocker = new obj ()
+    let resetLocker = obj ()
 
-    let onFileChange = new Event<string>()
+    let onFileChange = Event<string>()
+
     /// Currently only used to publish the unused interface event
-    let onError = new Event<ErrorEventArgs>()
+    let onError = Event<ErrorEventArgs>()
 
     /// Dispose previous, and return a new instance
     let createInstance basePath (previous: WatcherInstance option) =
@@ -276,7 +277,7 @@ type ResetablePollingFileWatcher(fileNameGlobFilters, ignoredDirectoryNameRegexe
                 lock
                     resetLocker
                     (fun () -> current |> Option.map (fun x -> x.Watcher.BasePath) |> Option.defaultValue "")
-            and set (value) =
+            and set value =
                 lock
                     resetLocker
                     (fun () ->
@@ -298,7 +299,7 @@ type ResetablePollingFileWatcher(fileNameGlobFilters, ignoredDirectoryNameRegexe
                         |> Option.map (fun x -> x.Watcher.EnableRaisingEvents)
                         |> Option.defaultValue false
                     )
-            and set (value) =
+            and set value =
                 lock
                     resetLocker
                     (fun () ->
@@ -322,8 +323,8 @@ type ResetablePollingFileWatcher(fileNameGlobFilters, ignoredDirectoryNameRegexe
 type DotnetFileWatcher(globFilters: string list) =
     let fileSystemWatcher = new FileSystemWatcher()
 
-    let onFileChange = new Event<string>()
-    let onError = new Event<ErrorEventArgs>()
+    let onFileChange = Event<string>()
+    let onError = Event<ErrorEventArgs>()
 
     do
         for filter in globFilters do
@@ -354,11 +355,11 @@ type DotnetFileWatcher(globFilters: string list) =
 
         member this.BasePath
             with get () = fileSystemWatcher.Path
-            and set (value) = fileSystemWatcher.Path <- value
+            and set value = fileSystemWatcher.Path <- value
 
         member this.EnableRaisingEvents
             with get () = fileSystemWatcher.EnableRaisingEvents
-            and set (value) = fileSystemWatcher.EnableRaisingEvents <- value
+            and set value = fileSystemWatcher.EnableRaisingEvents <- value
 
         member this.GlobFilters = fileSystemWatcher.Filters |> List.ofSeq
         member this.Dispose() = fileSystemWatcher.Dispose()

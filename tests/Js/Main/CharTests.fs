@@ -157,7 +157,7 @@ let tests =
 
         testCase "Char.IsHighSurrogate works" <| fun () ->
             Char.IsHighSurrogate('a') |> equal false
-            Char.IsHighSurrogate("\U00010F00".[0]) |> equal true
+            Char.IsHighSurrogate("\U00010F00"[0]) |> equal true
 
         testCase "Char.IsHighSurrogate with two args works" <| fun () ->
             let str = "a\U00010F00z"
@@ -168,7 +168,7 @@ let tests =
 
         testCase "Char.IsLowSurrogate works" <| fun () ->
             Char.IsLowSurrogate('a') |> equal false
-            Char.IsLowSurrogate("\U00010F00".[1]) |> equal true
+            Char.IsLowSurrogate("\U00010F00"[1]) |> equal true
 
         testCase "Char.IsLowSurrogate with two args works" <| fun () ->
             let str = "a\U00010F00z"
@@ -179,7 +179,7 @@ let tests =
 
         testCase "Char.IsSurrogate works" <| fun () ->
             Char.IsSurrogate('a') |> equal false
-            Char.IsSurrogate("\U00010F00".[1]) |> equal true
+            Char.IsSurrogate("\U00010F00"[1]) |> equal true
 
         testCase "Char.IsSurrogate with two args works" <| fun () ->
             let str = "a\U00010F00z"
@@ -190,7 +190,7 @@ let tests =
 
         testCase "Char.IsSurrogatePair works" <| fun () ->
             Char.IsSurrogatePair('a', 'b') |> equal false
-            Char.IsSurrogatePair("\U00010F00".[0], "\U00010F00".[1]) |> equal true
+            Char.IsSurrogatePair("\U00010F00"[0], "\U00010F00"[1]) |> equal true
 
         testCase "Char.IsSurrogatePair with two args works" <| fun () ->
             let str = "a\U00010F00z"
@@ -236,7 +236,7 @@ let tests =
                 for i in 0..number.Length-1 do
                     if i > 0 && i % 3 = 0 then
                         s <- "." + s
-                    let char = number.[number.Length-1-i]
+                    let char = number[number.Length-1-i]
                     s <- char.ToString() + s
                 if negative then "-" + s else s
 

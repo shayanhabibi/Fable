@@ -29,7 +29,7 @@ type MutableMap<'Key, 'Value when 'Key: equality>
 
     member this.TryFind(k) =
         match this.TryFindIndex(k) with
-        | true, h, i when i > -1 -> Some hashMap.[h].[i]
+        | true, h, i when i > -1 -> Some hashMap[h].[i]
         | _, _, _ -> None
 
     member this.Comparer = comparer
@@ -51,9 +51,9 @@ type MutableMap<'Key, 'Value when 'Key: equality>
             | _ -> raise (KeyNotFoundException("The item was not found in collection"))
         and set (k: 'Key) (v: 'Value) =
             match this.TryFindIndex(k) with
-            | true, h, i when i > -1 -> hashMap.[h].[i] <- KeyValuePair(k, v) // replace
-            | true, h, _ -> hashMap.[h].Add(KeyValuePair(k, v)) |> ignore // append
-            | false, h, _ -> hashMap.[h] <- ResizeArray([| KeyValuePair(k, v) |])
+            | true, h, i when i > -1 -> hashMap[h][i] <- KeyValuePair(k, v) // replace
+            | true, h, _ -> hashMap[h].Add(KeyValuePair(k, v)) |> ignore // append
+            | false, h, _ -> hashMap[h] <- ResizeArray([| KeyValuePair(k, v) |])
 
     member this.Add(k, v) =
         match this.TryFindIndex(k) with
@@ -62,8 +62,8 @@ type MutableMap<'Key, 'Value when 'Key: equality>
                 System.String.Format("An item with the same key has already been added. Key: {0}", k)
 
             raise (System.ArgumentException(msg))
-        | true, h, _ -> hashMap.[h].Add(KeyValuePair(k, v)) |> ignore // append
-        | false, h, _ -> hashMap.[h] <- ResizeArray([| KeyValuePair(k, v) |]) // add new
+        | true, h, _ -> hashMap[h].Add(KeyValuePair(k, v)) |> ignore // append
+        | false, h, _ -> hashMap[h] <- ResizeArray([| KeyValuePair(k, v) |]) // add new
 
     member this.ContainsKey(k) =
         match this.TryFindIndex(k) with
@@ -73,7 +73,7 @@ type MutableMap<'Key, 'Value when 'Key: equality>
     member this.Remove(k) =
         match this.TryFindIndex(k) with
         | true, h, i when i > -1 ->
-            hashMap.[h].RemoveAt(i)
+            hashMap[h].RemoveAt(i)
             true
         | _, _, _ -> false
 
@@ -83,7 +83,7 @@ type MutableMap<'Key, 'Value when 'Key: equality>
     // Native JS Map (used for primitive keys) doesn't work with `JSON.stringify` but
     // let's add `toJSON` for consistency with the types within fable-library.
     interface Fable.Core.IJsonSerializable with
-        member this.toJSON() = Helpers.arrayFrom (this)
+        member this.toJSON() = Helpers.arrayFrom this
 
 
     interface System.Collections.IEnumerable with
@@ -106,7 +106,7 @@ type MutableMap<'Key, 'Value when 'Key: equality>
             | _ -> false
 
         member this.CopyTo(array: KeyValuePair<'Key, 'Value>[], arrayIndex: int) : unit =
-            this |> Seq.iteri (fun i e -> array.[arrayIndex + i] <- e)
+            this |> Seq.iteri (fun i e -> array[arrayIndex + i] <- e)
 
         member this.Count: int = this.Count
         member this.IsReadOnly: bool = false
@@ -121,8 +121,8 @@ type MutableMap<'Key, 'Value when 'Key: equality>
         member this.ContainsKey(key: 'Key) : bool = this.ContainsKey(key)
 
         member this.Item
-            with get (key: 'Key): 'Value = this.[key]
-            and set (key: 'Key) (v: 'Value): unit = this.[key] <- v
+            with get (key: 'Key): 'Value = this[key]
+            and set (key: 'Key) (v: 'Value): unit = this[key] <- v
 
         member this.Keys: ICollection<'Key> =
             [| for pair in this -> pair.Key |] :> ICollection<'Key>
@@ -147,12 +147,12 @@ type MutableMap<'Key, 'Value when 'Key: equality>
         member this.entries() =
             this |> Seq.map (fun p -> p.Key, p.Value)
 
-        member this.get(k) = this.[k]
+        member this.get(k) = this[k]
         member this.has(k) = this.ContainsKey(k)
         member this.keys() = this |> Seq.map (fun p -> p.Key)
 
         member this.set(k, v) =
-            this.[k] <- v
+            this[k] <- v
             this :> Fable.Core.JS.Map<'Key, 'Value>
 
         member this.values() = this |> Seq.map (fun p -> p.Value)

@@ -405,7 +405,7 @@ let enumerateFromFunctions create moveNext current =
                 None
         )
         (fun x ->
-            match box (x) with
+            match box x with
             | :? System.IDisposable as id -> id.Dispose()
             | _ -> ()
         )
@@ -613,7 +613,7 @@ let initialize count f =
         )
         0
 
-let initializeInfinite f = initialize (System.Int32.MaxValue) f
+let initializeInfinite f = initialize System.Int32.MaxValue f
 
 let isEmpty (xs: seq<'T>) =
     match xs with
@@ -847,12 +847,12 @@ let cache (source: seq<'T>) =
                 lock prefix
                 <| fun () ->
                     if i < prefix.Count then
-                        Some(prefix.[i], i + 1)
+                        Some(prefix[i], i + 1)
                     else
                         oneStepTo i
 
                         if i < prefix.Count then
-                            Some(prefix.[i], i + 1)
+                            Some(prefix[i], i + 1)
                         else
                             None
             )

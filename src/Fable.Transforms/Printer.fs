@@ -18,7 +18,7 @@ type ParsedXmlDoc =
         {
             Summary =
                 if m.Success then
-                    Some(m.Groups.[1].Value.Trim())
+                    Some(m.Groups[1].Value.Trim())
                 else
                     None
         }
@@ -33,7 +33,7 @@ type Writer =
     abstract MakeImportPath: string -> string
     abstract Write: string -> Async<unit>
 
-    abstract AddLog: msg: string * severity: Fable.Severity * ?range: SourceLocation -> unit
+    abstract AddLog: msg: string * severity: Severity * ?range: SourceLocation -> unit
 
 type Printer =
     abstract Line: int
@@ -45,7 +45,7 @@ type Printer =
     abstract AddLocation: SourceLocation option -> unit
     abstract MakeImportPath: string -> string
 
-    abstract AddLog: msg: string * severity: Fable.Severity * ?range: SourceLocation -> unit
+    abstract AddLog: msg: string * severity: Severity * ?range: SourceLocation -> unit
 
 // TODO: Line comments
 type PrinterImpl(writer: Writer, ?indent: string) =

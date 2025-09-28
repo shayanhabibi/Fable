@@ -25,10 +25,10 @@ let append (array1: 'T[]) (array2: 'T[]) ([<OptionalArgument; Inject>] cons: Con
     let newArray = allocateArrayFromCons cons (len1 + len2)
 
     for i = 0 to len1 - 1 do
-        newArray.[i] <- array1.[i]
+        newArray[i] <- array1[i]
 
     for i = 0 to len2 - 1 do
-        newArray.[i + len1] <- array2.[i]
+        newArray[i + len1] <- array2[i]
 
     newArray
 
@@ -43,20 +43,20 @@ let last (array: 'T[]) =
     if array.Length = 0 then
         invalidArg "array" LanguagePrimitives.ErrorStrings.InputArrayEmptyString
 
-    array.[array.Length - 1]
+    array[array.Length - 1]
 
 let tryLast (array: 'T[]) =
     if array.Length = 0 then
         None
     else
-        Some array.[array.Length - 1]
+        Some array[array.Length - 1]
 
 let mapIndexed (f: int -> 'T -> 'U) (source: 'T[]) ([<OptionalArgument; Inject>] cons: Cons<'U>) : 'U[] =
     let len = source.Length
     let target = allocateArrayFromCons cons len
 
     for i = 0 to (len - 1) do
-        target.[i] <- f i source.[i]
+        target[i] <- f i source[i]
 
     target
 
@@ -65,7 +65,7 @@ let map (f: 'T -> 'U) (source: 'T[]) ([<OptionalArgument; Inject>] cons: Cons<'U
     let target = allocateArrayFromCons cons len
 
     for i = 0 to (len - 1) do
-        target.[i] <- f source.[i]
+        target[i] <- f source[i]
 
     target
 
@@ -82,7 +82,7 @@ let mapIndexed2
     let result = allocateArrayFromCons cons source1.Length
 
     for i = 0 to source1.Length - 1 do
-        result.[i] <- f i source1.[i] source2.[i]
+        result[i] <- f i source1[i] source2[i]
 
     result
 
@@ -93,7 +93,7 @@ let map2 (f: 'T1 -> 'T2 -> 'U) (source1: 'T1[]) (source2: 'T2[]) ([<OptionalArgu
     let result = allocateArrayFromCons cons source1.Length
 
     for i = 0 to source1.Length - 1 do
-        result.[i] <- f source1.[i] source2.[i]
+        result[i] <- f source1[i] source2[i]
 
     result
 
@@ -111,7 +111,7 @@ let mapIndexed3
     let result = allocateArrayFromCons cons source1.Length
 
     for i = 0 to source1.Length - 1 do
-        result.[i] <- f i source1.[i] source2.[i] source3.[i]
+        result[i] <- f i source1[i] source2[i] source3[i]
 
     result
 
@@ -129,7 +129,7 @@ let map3
     let result = allocateArrayFromCons cons source1.Length
 
     for i = 0 to source1.Length - 1 do
-        result.[i] <- f source1.[i] source2.[i] source3.[i]
+        result[i] <- f source1[i] source2[i] source3[i]
 
     result
 
@@ -146,8 +146,8 @@ let mapFold<'T, 'State, 'Result>
         let res = allocateArrayFromCons cons len
 
         for i = 0 to array.Length - 1 do
-            let h, s = mapping acc array.[i]
-            res.[i] <- h
+            let h, s = mapping acc array[i]
+            res[i] <- h
             acc <- s
 
         res, acc
@@ -165,8 +165,8 @@ let mapFoldBack<'T, 'State, 'Result>
         let res = allocateArrayFromCons cons len
 
         for i = array.Length - 1 downto 0 do
-            let h, s = mapping array.[i] acc
-            res.[i] <- h
+            let h, s = mapping array[i] acc
+            res[i] <- h
             acc <- s
 
         res, acc
@@ -176,7 +176,7 @@ let indexed (source: 'T[]) =
     let target = allocateArray len
 
     for i = 0 to (len - 1) do
-        target.[i] <- i, source.[i]
+        target[i] <- i, source[i]
 
     target
 
@@ -193,7 +193,7 @@ let concat (arrays: 'T[] seq) ([<OptionalArgument; Inject>] cons: Cons<'T>) : 'T
 
     match arrays.Length with
     | 0 -> allocateArrayFromCons cons 0
-    | 1 -> arrays.[0]
+    | 1 -> arrays[0]
     | _ ->
         let mutable totalIdx = 0
         let mutable totalLength = 0
@@ -205,7 +205,7 @@ let concat (arrays: 'T[] seq) ([<OptionalArgument; Inject>] cons: Cons<'T>) : 'T
 
         for arr in arrays do
             for j = 0 to (arr.Length - 1) do
-                result.[totalIdx] <- arr.[j]
+                result[totalIdx] <- arr[j]
                 totalIdx <- totalIdx + 1
 
         result
@@ -232,7 +232,7 @@ let indexOf<'T>
     let rec loop i =
         if i >= end' then
             -1
-        else if eq.Equals(item, array.[i]) then
+        else if eq.Equals(item, array[i]) then
             i
         else
             loop (i + 1)
@@ -246,7 +246,7 @@ let empty cons = allocateArrayFromCons cons 0
 
 let singleton value ([<OptionalArgument; Inject>] cons: Cons<'T>) =
     let ar = allocateArrayFromCons cons 1
-    ar.[0] <- value
+    ar[0] <- value
     ar
 
 let initialize count initializer ([<OptionalArgument; Inject>] cons: Cons<'T>) =
@@ -256,7 +256,7 @@ let initialize count initializer ([<OptionalArgument; Inject>] cons: Cons<'T>) =
     let result = allocateArrayFromCons cons count
 
     for i = 0 to count - 1 do
-        result.[i] <- initializer i
+        result[i] <- initializer i
 
     result
 
@@ -268,7 +268,7 @@ let pairwise (array: 'T[]) =
         let result = allocateArray count
 
         for i = 0 to count - 1 do
-            result.[i] <- array.[i], array.[i + 1]
+            result[i] <- array[i], array[i + 1]
 
         result
 
@@ -280,7 +280,7 @@ let replicate count initial ([<OptionalArgument; Inject>] cons: Cons<'T>) =
     let result: 'T array = allocateArrayFromCons cons count
 
     for i = 0 to result.Length - 1 do
-        result.[i] <- initial
+        result[i] <- initial
 
     result
 
@@ -310,19 +310,19 @@ let reverse (array: 'T[]) =
 
 let scan<'T, 'State> folder (state: 'State) (array: 'T[]) ([<OptionalArgument; Inject>] cons: Cons<'State>) =
     let res = allocateArrayFromCons cons (array.Length + 1)
-    res.[0] <- state
+    res[0] <- state
 
     for i = 0 to array.Length - 1 do
-        res.[i + 1] <- folder res.[i] array.[i]
+        res[i + 1] <- folder res[i] array[i]
 
     res
 
 let scanBack<'T, 'State> folder (array: 'T[]) (state: 'State) ([<OptionalArgument; Inject>] cons: Cons<'State>) =
     let res = allocateArrayFromCons cons (array.Length + 1)
-    res.[array.Length] <- state
+    res[array.Length] <- state
 
     for i = array.Length - 1 downto 0 do
-        res.[i] <- folder array.[i] res.[i + 1]
+        res[i] <- folder array[i] res[i + 1]
 
     res
 
@@ -344,7 +344,7 @@ let skip count (array: 'T[]) ([<OptionalArgument; Inject>] cons: Cons<'T>) =
 let skipWhile predicate (array: 'T[]) ([<OptionalArgument; Inject>] cons: Cons<'T>) =
     let mutable count = 0
 
-    while count < array.Length && predicate array.[count] do
+    while count < array.Length && predicate array[count] do
         count <- count + 1
 
     if count = array.Length then
@@ -367,7 +367,7 @@ let take count (array: 'T[]) ([<OptionalArgument; Inject>] cons: Cons<'T>) =
 let takeWhile predicate (array: 'T[]) ([<OptionalArgument; Inject>] cons: Cons<'T>) =
     let mutable count = 0
 
-    while count < array.Length && predicate array.[count] do
+    while count < array.Length && predicate array[count] do
         count <- count + 1
 
     if count = 0 then
@@ -425,11 +425,11 @@ let partition (f: 'T -> bool) (source: 'T[]) ([<OptionalArgument; Inject>] cons:
     let mutable iFalse = 0
 
     for i = 0 to len - 1 do
-        if f source.[i] then
-            res1.[iTrue] <- source.[i]
+        if f source[i] then
+            res1[iTrue] <- source[i]
             iTrue <- iTrue + 1
         else
-            res2.[iFalse] <- source.[i]
+            res2[iFalse] <- source[i]
             iFalse <- iFalse + 1
 
     res1 |> truncate iTrue, res2 |> truncate iFalse
@@ -458,7 +458,7 @@ let pick chooser (array: _[]) =
         if i >= array.Length then
             indexNotFound ()
         else
-            match chooser array.[i] with
+            match chooser array[i] with
             | None -> loop (i + 1)
             | Some res -> res
 
@@ -469,7 +469,7 @@ let tryPick chooser (array: _[]) =
         if i >= array.Length then
             None
         else
-            match chooser array.[i] with
+            match chooser array[i] with
             | None -> loop (i + 1)
             | res -> res
 
@@ -479,8 +479,8 @@ let findBack predicate (array: _[]) =
     let rec loop i =
         if i < 0 then
             indexNotFound ()
-        elif predicate array.[i] then
-            array.[i]
+        elif predicate array[i] then
+            array[i]
         else
             loop (i - 1)
 
@@ -490,8 +490,8 @@ let tryFindBack predicate (array: _[]) =
     let rec loop i =
         if i < 0 then
             None
-        elif predicate array.[i] then
-            Some array.[i]
+        elif predicate array[i] then
+            Some array[i]
         else
             loop (i - 1)
 
@@ -501,7 +501,7 @@ let findLastIndex predicate (array: _[]) =
     let rec loop i =
         if i < 0 then
             -1
-        elif predicate array.[i] then
+        elif predicate array[i] then
             i
         else
             loop (i - 1)
@@ -513,7 +513,7 @@ let findIndexBack predicate (array: _[]) =
         if i < 0 then
             indexNotFound ()
             -1
-        elif predicate array.[i] then
+        elif predicate array[i] then
             i
         else
             loop (i - 1)
@@ -524,7 +524,7 @@ let tryFindIndexBack predicate (array: _[]) =
     let rec loop i =
         if i < 0 then
             None
-        elif predicate array.[i] then
+        elif predicate array[i] then
             Some i
         else
             loop (i - 1)
@@ -535,7 +535,7 @@ let choose (chooser: 'T -> 'U option) (array: 'T[]) ([<OptionalArgument; Inject>
     let res = ResizeArray<'U>()
 
     for i = 0 to array.Length - 1 do
-        match chooser array.[i] with
+        match chooser array[i] with
         | None -> ()
         | Some y -> pushImpl res y |> ignore
 
@@ -563,25 +563,25 @@ let fold<'T, 'State> folder (state: 'State) (array: 'T[]) =
 
 let iterate action (array: 'T[]) =
     for i = 0 to array.Length - 1 do
-        action array.[i]
+        action array[i]
 
 let iterateIndexed action (array: 'T[]) =
     for i = 0 to array.Length - 1 do
-        action i array.[i]
+        action i array[i]
 
 let iterate2 action (array1: 'T1[]) (array2: 'T2[]) =
     if array1.Length <> array2.Length then
         differentLengths ()
 
     for i = 0 to array1.Length - 1 do
-        action array1.[i] array2.[i]
+        action array1[i] array2[i]
 
 let iterateIndexed2 action (array1: 'T1[]) (array2: 'T2[]) =
     if array1.Length <> array2.Length then
         differentLengths ()
 
     for i = 0 to array1.Length - 1 do
-        action i array1.[i] array2.[i]
+        action i array1[i] array2[i]
 
 let isEmpty (array: 'T[]) = array.Length = 0
 
@@ -608,8 +608,8 @@ let permute f (array: 'T[]) =
             if j < 0 || j >= size then
                 invalidOp "Not a valid permutation"
 
-            res.[j] <- x
-            checkFlags.[j] <- 1
+            res[j] <- x
+            checkFlags[j] <- 1
         )
         array
 
@@ -635,7 +635,7 @@ let setSlice (target: 'T[]) (lower: int option) (upper: int option) (source: 'T[
     //     typedArraySetImpl target source lower
     // else
     for i = 0 to length do
-        target.[i + lower] <- source.[i]
+        target[i + lower] <- source[i]
 
 let sortInPlaceBy (projection: 'a -> 'b) (xs: 'a[]) ([<Inject>] comparer: IComparer<'b>) : unit =
     sortInPlaceWithImpl (fun x y -> comparer.Compare(projection x, projection y)) xs
@@ -668,7 +668,7 @@ let allPairs (xs: 'T1[]) (ys: 'T2[]) : ('T1 * 'T2)[] =
 
     for i = 0 to xs.Length - 1 do
         for j = 0 to ys.Length - 1 do
-            res.[i * len2 + j] <- (xs.[i], ys.[j])
+            res[i * len2 + j] <- (xs[i], ys[j])
 
     res
 
@@ -693,8 +693,8 @@ let unzip (array: _[]) =
 
     iterateIndexed
         (fun i (item1, item2) ->
-            res1.[i] <- item1
-            res2.[i] <- item2
+            res1[i] <- item1
+            res2[i] <- item2
         )
         array
 
@@ -708,9 +708,9 @@ let unzip3 (array: _[]) =
 
     iterateIndexed
         (fun i (item1, item2, item3) ->
-            res1.[i] <- item1
-            res2.[i] <- item2
-            res3.[i] <- item3
+            res1[i] <- item1
+            res2[i] <- item2
+            res3[i] <- item3
         )
         array
 
@@ -724,7 +724,7 @@ let zip (array1: 'T[]) (array2: 'U[]) =
     let result = allocateArray array1.Length
 
     for i = 0 to array1.Length - 1 do
-        result.[i] <- array1.[i], array2.[i]
+        result[i] <- array1[i], array2[i]
 
     result
 
@@ -736,7 +736,7 @@ let zip3 (array1: 'T[]) (array2: 'U[]) (array3: 'V[]) =
     let result = allocateArray array1.Length
 
     for i = 0 to array1.Length - 1 do
-        result.[i] <- array1.[i], array2.[i], array3.[i]
+        result[i] <- array1[i], array2[i], array3[i]
 
     result
 
@@ -747,7 +747,7 @@ let chunkBySize (chunkSize: int) (array: 'T[]) : 'T[][] =
     let result = ResizeArray<'T[]>()
 
     if array.Length > 0 then
-        let chunks = int (System.Math.Ceiling(float (array.Length) / float (chunkSize)))
+        let chunks = int (System.Math.Ceiling(float array.Length / float chunkSize))
 
         // add each chunk to the result
         for x = 0 to chunks - 1 do
@@ -787,7 +787,7 @@ let compareWith (comparer: 'T -> 'T -> int) (source1: 'T[]) (source2: 'T[]) =
         let mutable res = 0
 
         while res = 0 && i < len do
-            res <- comparer source1.[i] source2.[i]
+            res <- comparer source1[i] source2[i]
             i <- i + 1
 
         if res <> 0 then
@@ -820,7 +820,7 @@ let compareTo (comparer: 'T -> 'T -> int) (source1: 'T[]) (source2: 'T[]) =
             let mutable res = 0
 
             while res = 0 && i < len1 do
-                res <- comparer source1.[i] source2.[i]
+                res <- comparer source1[i] source2[i]
                 i <- i + 1
 
             res
@@ -845,14 +845,14 @@ let equalsWith (equals: 'T -> 'T -> bool) (source1: 'T[]) (source2: 'T[]) =
             false
         else
             while i < length1 && result do
-                result <- equals source1.[i] source2.[i]
+                result <- equals source1[i] source2[i]
                 i <- i + 1
 
             result
 
 let exactlyOne (array: 'T[]) =
     if array.Length = 1 then
-        array.[0]
+        array[0]
     elif array.Length = 0 then
         invalidArg "array" LanguagePrimitives.ErrorStrings.InputSequenceEmptyString
     else
@@ -860,7 +860,7 @@ let exactlyOne (array: 'T[]) =
 
 let tryExactlyOne (array: 'T[]) =
     if array.Length = 1 then
-        Some(array.[0])
+        Some(array[0])
     else
         None
 
@@ -868,13 +868,13 @@ let head (array: 'T[]) =
     if array.Length = 0 then
         invalidArg "array" LanguagePrimitives.ErrorStrings.InputArrayEmptyString
     else
-        array.[0]
+        array[0]
 
 let tryHead (array: 'T[]) =
     if array.Length = 0 then
         None
     else
-        Some array.[0]
+        Some array[0]
 
 let tail (array: 'T[]) =
     if array.Length = 0 then
@@ -924,7 +924,7 @@ let foldIndexed2 folder state (array1: _[]) (array2: _[]) =
         failwith "Arrays have different lengths"
 
     for i = 0 to array1.Length - 1 do
-        acc <- folder i acc array1.[i] array2.[i]
+        acc <- folder i acc array1[i] array2[i]
 
     acc
 
@@ -940,7 +940,7 @@ let foldBackIndexed2<'T1, 'T2, 'State> folder (array1: 'T1[]) (array2: 'T2[]) (s
     let size = array1.Length
 
     for i = 1 to size do
-        acc <- folder (i - 1) array1.[size - i] array2.[size - i] acc
+        acc <- folder (i - 1) array1[size - i] array2[size - i] acc
 
     acc
 
@@ -970,7 +970,7 @@ let rec existsOffset predicate (array: 'T[]) index =
     if index = array.Length then
         false
     else
-        predicate array.[index] || existsOffset predicate array (index + 1)
+        predicate array[index] || existsOffset predicate array (index + 1)
 
 let exists predicate array = existsOffset predicate array 0
 
@@ -978,7 +978,7 @@ let rec existsOffset2 predicate (array1: _[]) (array2: _[]) index =
     if index = array1.Length then
         false
     else
-        predicate array1.[index] array2.[index]
+        predicate array1[index] array2[index]
         || existsOffset2 predicate array1 array2 (index + 1)
 
 let rec exists2 predicate (array1: _[]) (array2: _[]) =
@@ -991,7 +991,7 @@ let sum (array: 'T[]) ([<Inject>] adder: IGenericAdder<'T>) : 'T =
     let mutable acc = adder.GetZero()
 
     for i = 0 to array.Length - 1 do
-        acc <- adder.Add(acc, array.[i])
+        acc <- adder.Add(acc, array[i])
 
     acc
 
@@ -999,7 +999,7 @@ let sumBy (projection: 'T -> 'T2) (array: 'T[]) ([<Inject>] adder: IGenericAdder
     let mutable acc = adder.GetZero()
 
     for i = 0 to array.Length - 1 do
-        acc <- adder.Add(acc, projection array.[i])
+        acc <- adder.Add(acc, projection array[i])
 
     acc
 
@@ -1050,7 +1050,7 @@ let average (array: 'T[]) ([<Inject>] averager: IGenericAverager<'T>) : 'T =
     let mutable total = averager.GetZero()
 
     for i = 0 to array.Length - 1 do
-        total <- averager.Add(total, array.[i])
+        total <- averager.Add(total, array[i])
 
     averager.DivideByInt(total, array.Length)
 
@@ -1061,7 +1061,7 @@ let averageBy (projection: 'T -> 'T2) (array: 'T[]) ([<Inject>] averager: IGener
     let mutable total = averager.GetZero()
 
     for i = 0 to array.Length - 1 do
-        total <- averager.Add(total, projection array.[i])
+        total <- averager.Add(total, projection array[i])
 
     averager.DivideByInt(total, array.Length)
 
@@ -1071,11 +1071,10 @@ let windowed (windowSize: int) (source: 'T[]) : 'T[][] =
     if windowSize <= 0 then
         failwith "windowSize must be positive"
 
-    let res =
-        FSharp.Core.Operators.max 0 (source.Length - windowSize + 1) |> allocateArray
+    let res = Operators.max 0 (source.Length - windowSize + 1) |> allocateArray
 
     for i = windowSize to source.Length do
-        res.[i - windowSize] <- source.[i - windowSize .. i - 1]
+        res[i - windowSize] <- source[i - windowSize .. i - 1]
 
     res
 
@@ -1086,7 +1085,7 @@ let splitInto (chunks: int) (array: 'T[]) : 'T[][] =
     let result = ResizeArray<'T[]>()
 
     if array.Length > 0 then
-        let chunks = FSharp.Core.Operators.min chunks array.Length
+        let chunks = Operators.min chunks array.Length
         let minChunkSize = array.Length / chunks
         let chunksWithExtraItem = array.Length % chunks
 
@@ -1097,7 +1096,7 @@ let splitInto (chunks: int) (array: 'T[]) : 'T[][] =
                 else
                     minChunkSize
 
-            let start = i * minChunkSize + (FSharp.Core.Operators.min chunksWithExtraItem i)
+            let start = i * minChunkSize + (Operators.min chunksWithExtraItem i)
 
             let slice = subArrayImpl array start chunkSize
             pushImpl result slice |> ignore
@@ -1116,7 +1115,7 @@ let transpose (arrays: 'T[] seq) ([<OptionalArgument; Inject>] cons: Cons<'T>) :
     match len with
     | 0 -> allocateArray 0
     | _ ->
-        let firstArray = arrays.[0]
+        let firstArray = arrays[0]
         let lenInner = firstArray.Length
 
         if arrays |> forAll (fun a -> a.Length = lenInner) |> not then
@@ -1125,10 +1124,10 @@ let transpose (arrays: 'T[] seq) ([<OptionalArgument; Inject>] cons: Cons<'T>) :
         let result: 'T[][] = allocateArray lenInner
 
         for i in 0 .. lenInner - 1 do
-            result.[i] <- allocateArrayFromCons cons len
+            result[i] <- allocateArrayFromCons cons len
 
             for j in 0 .. len - 1 do
-                result.[i].[j] <- arrays.[j].[i]
+                result[i][j] <- arrays[j][i]
 
         result
 
@@ -1141,12 +1140,12 @@ let insertAt (index: int) (y: 'T) (xs: 'T[]) ([<OptionalArgument; Inject>] cons:
     let target = allocateArrayFromCons cons (len + 1)
 
     for i = 0 to (index - 1) do
-        target.[i] <- xs.[i]
+        target[i] <- xs[i]
 
-    target.[index] <- y
+    target[index] <- y
 
     for i = index to (len - 1) do
-        target.[i + 1] <- xs.[i]
+        target[i + 1] <- xs[i]
 
     target
 
@@ -1161,13 +1160,13 @@ let insertManyAt (index: int) (ys: seq<'T>) (xs: 'T[]) ([<OptionalArgument; Inje
     let target = allocateArrayFromCons cons (len + len2)
 
     for i = 0 to (index - 1) do
-        target.[i] <- xs.[i]
+        target[i] <- xs[i]
 
     for i = 0 to (len2 - 1) do
-        target.[index + i] <- ys.[i]
+        target[index + i] <- ys[i]
 
     for i = index to (len - 1) do
-        target.[i + len2] <- xs.[i]
+        target[i + len2] <- xs[i]
 
     target
 
@@ -1233,11 +1232,11 @@ let updateAt (index: int) (y: 'T) (xs: 'T[]) ([<OptionalArgument; Inject>] cons:
     let target = allocateArrayFromCons cons len
 
     for i = 0 to (len - 1) do
-        target.[i] <-
+        target[i] <-
             if i = index then
                 y
             else
-                xs.[i]
+                xs[i]
 
     target
 

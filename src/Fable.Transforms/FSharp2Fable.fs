@@ -475,7 +475,7 @@ let private transformDelegate com ctx (delegateType: FSharpType) expr =
             | Some(_, Some _fullName) ->
                 match expr with
                 | Fable.CurriedApply(expr2, [ Fable.Value(Fable.UnitConstant, _) ], _, _) -> expr2
-                | Fable.Call(expr2, { Args = [ Fable.Value(Fable.UnitConstant, _) ] }, _, _) -> // expr2
+                | Fable.Call(_, { Args = [ Fable.Value(Fable.UnitConstant, _) ] }, _, _) -> // expr2
                     Fable.Delegate([], expr, None, Fable.Tags.empty)
                 | _ -> expr
             | _ -> expr
@@ -777,7 +777,7 @@ let private transformExpr (com: IFableCompiler) (ctx: Context) appliedGenArgs fs
                     isByRefValue var
                     &&
                     // The replacement only needs to happen when var.FullType = byref<fsExpr.Type>
-                    fsExpr.Type = var.FullType.GenericArguments.[0]
+                    fsExpr.Type = var.FullType.GenericArguments[0]
                 then
                     // Getting byref value is compiled as FSharpRef op_Dereference
                     return Replacements.Api.getRefCell com r (List.head v.Type.Generics) v
@@ -1299,7 +1299,7 @@ let private transformExpr (com: IFableCompiler) (ctx: Context) appliedGenArgs fs
                     | ConstructorCall(call, genArgs, args)
                     // This pattern occurs in constructors that define a this value: `type C() as this`
                     // We're discarding the bound `this` value, it "shouldn't" be used in the base constructor arguments
-                    | FSharpExprPatterns.Let(_, (ConstructorCall(call, genArgs, args))) ->
+                    | FSharpExprPatterns.Let(_, ConstructorCall(call, genArgs, args)) ->
                         match call.DeclaringEntity with
                         | Some ent when ent = baseEnt ->
                             let r = makeRangeFrom first
@@ -2081,7 +2081,7 @@ let rec getRootFSharpEntities (declarations: FSharpImplementationFileDeclaration
 
     Seq.collect getRootFSharpEntitiesInner declarations
 
-let getRootModule (declarations: FSharpImplementationFileDeclaration list) : string * (FSharpXmlDoc option) =
+let getRootModule (declarations: FSharpImplementationFileDeclaration list) : string * FSharpXmlDoc option =
     let rec getRootModuleInner outerEnt decls =
         match decls, outerEnt with
         | [ FSharpImplementationFileDeclaration.Entity(ent, decls) ], _ when ent.IsFSharpModule || ent.IsNamespace ->
@@ -2528,7 +2528,7 @@ type FableCompiler(com: Compiler) =
             function
             | argIdent :: restArgIdents, argExpr :: restArgExprs ->
                 foldArgs ((argIdent, argExpr) :: acc) (restArgIdents, restArgExprs)
-            | (argIdent: Fable.Ident) :: restArgIdents, [] ->
+            | argIdent: Fable.Ident :: restArgIdents, [] ->
                 foldArgs
                     ((argIdent, Fable.Value(Fable.NewOption(None, argIdent.Type, false), None))
                      :: acc)
@@ -2675,7 +2675,7 @@ let getInlineExprs fileName (declarations: FSharpImplementationFileDeclaration l
                             )
 
                         // It looks as we don't need memb.DeclaringEntity.GenericParameters here
-                        let genArgs = memb.GenericParameters |> Seq.mapToList (genParamName)
+                        let genArgs = memb.GenericParameters |> Seq.mapToList genParamName
 
                         {
                             Args = List.rev idents

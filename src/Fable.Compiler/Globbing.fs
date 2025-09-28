@@ -11,7 +11,6 @@ open System.IO
 /// This module contains a file pattern globbing implementation.
 [<RequireQualifiedAccess>]
 module Glob =
-    open System
     open System.Text.RegularExpressions
 
     // Normalizes path for different OS
@@ -29,16 +28,16 @@ module Glob =
             try
                 Directory.EnumerateDirectories(root, dir, SearchOption.TopDirectoryOnly)
                 |> Seq.toList
-            with :? System.IO.DirectoryNotFoundException ->
+            with :? DirectoryNotFoundException ->
                 List.empty
         else
             let path = Path.Combine(root, dir)
 
             let di =
                 if absolute then
-                    new DirectoryInfo(dir)
+                    DirectoryInfo(dir)
                 else
-                    new DirectoryInfo(path)
+                    DirectoryInfo(path)
 
             if di.Exists then
                 [ di.FullName ]
@@ -54,13 +53,13 @@ module Glob =
         | Drive name :: t ->
             let subDirs = List.collect (checkSubDirs true name) acc
             buildPaths subDirs t
-        | Recursive :: [] ->
+        | [ Recursive ] ->
             let dirs =
                 Seq.collect
                     (fun dir ->
                         try
                             Directory.EnumerateFileSystemEntries(dir, "*", SearchOption.AllDirectories)
-                        with :? System.IO.DirectoryNotFoundException ->
+                        with :? DirectoryNotFoundException ->
                             Seq.empty
                     )
                     acc
@@ -72,7 +71,7 @@ module Glob =
                     (fun dir ->
                         try
                             Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories)
-                        with :? System.IO.DirectoryNotFoundException ->
+                        with :? DirectoryNotFoundException ->
                             Seq.empty
                     )
                     acc
@@ -87,8 +86,8 @@ module Glob =
                     try
                         Directory.EnumerateFiles(dir, pattern) |> Seq.toList
                     with
-                    | :? System.IO.DirectoryNotFoundException
-                    | :? System.IO.PathTooLongException -> []
+                    | :? DirectoryNotFoundException
+                    | :? PathTooLongException -> []
             )
 
     let private driveRegex = Regex(@"^[A-Za-z]:$", RegexOptions.Compiled)
@@ -112,7 +111,7 @@ module Glob =
         let globRoot =
             // If we did not find any "*", then drop the last bit (it is a file name, not a pattern)
             (if patternPathParts.Length = patternParts.Length then
-                 patternPathParts.[0 .. patternPathParts.Length - 2]
+                 patternPathParts[0 .. patternPathParts.Length - 2]
              else
                  patternPathParts)
             |> String.concat (Path.DirectorySeparatorChar.ToString())
@@ -155,27 +154,25 @@ module Glob =
         let baseItems =
             let start, rest =
                 if input.StartsWith("\\\\", StringComparison.Ordinal) && splits.Length >= 4 then
-                    let serverName = splits.[2]
-                    let share = splits.[3]
+                    let serverName = splits[2]
+                    let share = splits[3]
 
                     [ Directory($"\\\\%s{serverName}\\%s{share}") ], splits |> Seq.skip 4
-                elif splits.Length >= 2 && Path.IsPathRooted input && driveRegex.IsMatch splits.[0] then
-                    [ Directory(splits.[0] + "\\") ], splits |> Seq.skip 1
+                elif splits.Length >= 2 && Path.IsPathRooted input && driveRegex.IsMatch splits[0] then
+                    [ Directory(splits[0] + "\\") ], splits |> Seq.skip 1
                 elif splits.Length >= 2 && Path.IsPathRooted input && input.StartsWith '/' then
                     [ Directory("/") ], splits |> Array.toSeq
                 else
                     if Path.IsPathRooted input then
                         if input.StartsWith '\\' then
                             failwithf
-                                "Please remove the leading '\\' or '/' and replace them with \
+                                $"Please remove the leading '\\' or '/' and replace them with \
                                        '.\\' or './' if you want to use a relative path. Leading \
-                                       slashes are considered an absolute path (input was '%s')!"
-                                originalInput
+                                       slashes are considered an absolute path (input was '%s{originalInput}')!"
                         else
                             failwithf
-                                "Unknown globbing input '%s', try to use a \
+                                $"Unknown globbing input '%s{originalInput}', try to use a \
                                        relative path and report an issue!"
-                                originalInput
 
                     [], splits |> Array.toSeq
 
@@ -214,14 +211,14 @@ module Glob =
             let xTOyMap = xTOy |> Map.ofList
 
             let replacePattern =
-                xTOy |> List.map (fun x -> x |> snd |> fst) |> String.concat ("|")
+                xTOy |> List.map (fun x -> x |> snd |> fst) |> String.concat "|"
 
             let replaced =
                 Regex(replacePattern)
                     .Replace(
                         escapedPattern,
                         fun m ->
-                            let matched = xTOy |> Seq.map (fst) |> Seq.find (fun n -> m.Groups.Item(n).Success)
+                            let matched = xTOy |> Seq.map fst |> Seq.find (fun n -> m.Groups.Item(n).Success)
 
                             (xTOyMap |> Map.tryFind matched).Value |> snd
                     )
@@ -284,7 +281,7 @@ type LazyGlobbingPattern =
                         yield! Glob.search this.BaseDirectory pattern
                 }
                 |> Seq.filter (fun x -> not (Set.contains x excludes))
-                |> Seq.filter (fun x -> hashSet.Add x)
+                |> Seq.filter hashSet.Add
 
             files.GetEnumerator()
 
@@ -357,7 +354,7 @@ module GlobbingPatternExtensions =
                 if Path.IsPathRooted(pattern) then
                     pattern
                 else
-                    System.IO.Path.Combine(this.BaseDirectory, pattern)
+                    Path.Combine(this.BaseDirectory, pattern)
 
             let fullPath = Path.GetFullPath path
 

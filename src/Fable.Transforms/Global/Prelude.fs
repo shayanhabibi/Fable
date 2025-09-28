@@ -106,7 +106,7 @@ module Array =
         let mutable li = []
 
         for i = xs.Length - 1 downto 0 do
-            li <- (f xs.[i]) :: li
+            li <- (f xs[i]) :: li
 
         li
 
@@ -114,7 +114,7 @@ module Array =
         let mutable li = []
 
         for i = xs.Length - 1 downto 0 do
-            match f xs.[i] with
+            match f xs[i] with
             | None -> ()
             | Some x -> li <- x :: li
 
@@ -158,7 +158,7 @@ module List =
 
     let replaceLast f (xs: 'a list) =
         let xs = List.toArray xs
-        xs.[xs.Length - 1] <- f xs.[xs.Length - 1]
+        xs[xs.Length - 1] <- f xs[xs.Length - 1]
         List.ofArray xs
 
     let collecti (f: int -> 'a -> 'b list) (xs: 'a list) =
@@ -182,12 +182,12 @@ module List =
 
     let mapToArray (f: 'a -> 'b) (xs: 'a list) =
         let ar: 'b[] = List.length xs |> Array.zeroCreate
-        xs |> List.iteri (fun i x -> ar.[i] <- f x)
+        xs |> List.iteri (fun i x -> ar[i] <- f x)
         ar
 
     let mapiToArray (f: int -> 'a -> 'b) (xs: 'a list) =
         let ar: 'b[] = List.length xs |> Array.zeroCreate
-        xs |> List.iteri (fun i x -> ar.[i] <- f i x)
+        xs |> List.iteri (fun i x -> ar[i] <- f i x)
         ar
 
     let splitWhile (f: 'a -> bool) (xs: 'a list) =
@@ -358,13 +358,13 @@ module Path =
 
         if len = 0 then
             false
-        elif path.[0] = '.' then
+        elif path[0] = '.' then
             if len = 1 then
                 true
             // Some folders start with a dot, see #1599
             // For simplicity, ignore folders starting with TWO dots
             else
-                match path.[1] with
+                match path[1] with
                 | '/'
                 | '\\'
                 | '.' -> true
@@ -379,8 +379,8 @@ module Path =
             let mutable c = 0 //index up to which the paths are the same
             let mutable d = -1 //index of trailing slash for the portion where the paths are the s
 
-            while c < path1.Length && c < path2.Length && path1.[c] = path2.[c] do
-                if path1.[c] = '/' then
+            while c < path1.Length && c < path2.Length && path1[c] = path2[c] do
+                if path1[c] = '/' then
                     d <- c
 
                 c <- c + 1
@@ -393,7 +393,7 @@ module Path =
                 let mutable builder = ""
 
                 while c < path1.Length do
-                    if path1.[c] = '/' then
+                    if path1[c] = '/' then
                         builder <- builder + "../"
 
                     c <- c + 1
@@ -409,7 +409,7 @@ module Path =
             else
                 path
 
-        if fromFullPath.[0] <> toFullPath.[0] then
+        if fromFullPath[0] <> toFullPath[0] then
             // If paths start differently, it means we're on Windows
             // and drive letters are different, so just return the toFullPath
             toFullPath
@@ -434,13 +434,13 @@ module Path =
         let rec getCommonPrefix (prefix: string[]) =
             function
             | [] -> prefix
-            | (x: string[]) :: xs ->
+            | x: string[] :: xs ->
                 let mutable i = 0
 
-                while i < prefix.Length && i < x.Length && x.[i] = prefix.[i] do
+                while i < prefix.Length && i < x.Length && x[i] = prefix[i] do
                     i <- i + 1
 
-                getCommonPrefix prefix.[0 .. i - 1] xs
+                getCommonPrefix prefix[0 .. i - 1] xs
 
         match xs with
         | [] -> [||]

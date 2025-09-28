@@ -153,7 +153,7 @@ let attribsOfSymbol (s: FSharpSymbol) =
             if v.IsExplicitInterfaceImplementation then
                 yield "interface_impl"
 
-            yield sprintf "%A" v.InlineAnnotation
+            yield $"%A{v.InlineAnnotation}"
         // if v.IsConstructorThisValue then yield "ctorthis"
         // if v.IsMemberThisValue then yield "this"
         // if v.LiteralValue.IsSome then yield "literal"
@@ -169,34 +169,34 @@ let rec printFSharpDecls prefix decls =
 
             match decl with
             | FSharpImplementationFileDeclaration.Entity(e, sub) ->
-                yield sprintf "%s%i) ENTITY: %s %A" prefix i e.CompiledName (attribsOfSymbol e)
+                yield $"%s{prefix}%i{i}) ENTITY: %s{e.CompiledName} %A{attribsOfSymbol e}"
 
                 if not (Seq.isEmpty e.Attributes) then
-                    yield sprintf "%sattributes: %A" prefix (Seq.toList e.Attributes)
+                    yield $"%s{prefix}attributes: %A{Seq.toList e.Attributes}"
 
                 if not (Seq.isEmpty e.DeclaredInterfaces) then
-                    yield sprintf "%sinterfaces: %A" prefix (Seq.toList e.DeclaredInterfaces)
+                    yield $"%s{prefix}interfaces: %A{Seq.toList e.DeclaredInterfaces}"
 
                 yield ""
                 yield! printFSharpDecls (prefix + "\t") sub
             | FSharpImplementationFileDeclaration.MemberOrFunctionOrValue(meth, args, body) ->
-                yield sprintf "%s%i) METHOD: %s %A" prefix i meth.CompiledName (attribsOfSymbol meth)
+                yield $"%s{prefix}%i{i}) METHOD: %s{meth.CompiledName} %A{attribsOfSymbol meth}"
 
-                yield sprintf "%stype: %A" prefix meth.FullType
-                yield sprintf "%sargs: %A" prefix args
+                yield $"%s{prefix}type: %A{meth.FullType}"
+                yield $"%s{prefix}args: %A{args}"
                 // if not meth.IsCompilerGenerated then
-                yield sprintf "%sbody: %A" prefix body
+                yield $"%s{prefix}body: %A{body}"
                 yield ""
             | FSharpImplementationFileDeclaration.InitAction(expr) ->
-                yield sprintf "%s%i) ACTION" prefix i
-                yield sprintf "%s%A" prefix expr
+                yield $"%s{prefix}%i{i}) ACTION"
+                yield $"%s{prefix}%A{expr}"
                 yield ""
     }
 
 let printFableDecls decls =
     seq {
         for decl in decls do
-            yield sprintf "%A" decl
+            yield $"%A{decl}"
     }
 
 let printAst outDir (implFiles: FSharpImplementationFileContents list) =
@@ -208,7 +208,7 @@ let printAst outDir (implFiles: FSharpImplementationFileContents list) =
             let fileName = Path.GetFileNameWithoutExtension(implFile.FileName)
             Path.Combine(outDir, fileName + ".fs.ast")
 
-        Log.verbose (lazy sprintf "Print AST %s" target)
+        Log.verbose (lazy $"Print AST %s{target}")
 
         printFSharpDecls "" implFile.Declarations
         |> fun lines -> File.WriteAllLines(target, lines)

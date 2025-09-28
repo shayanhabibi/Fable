@@ -53,7 +53,7 @@ type NonSeeded() =
         member _.Next2(minValue, maxValue) = Native.randomNext (minValue, maxValue)
 
         member _.NextDouble() = Native.random ()
-        member _.NextBytes(buffer) = Native.randomBytes (buffer)
+        member _.NextBytes(buffer) = Native.randomBytes buffer
 
 // Port of System.Random, see https://github.com/fable-compiler/Fable/issues/2688#issuecomment-1003752599
 type Seeded(seed: int) =
@@ -78,26 +78,26 @@ type Seeded(seed: int) =
 
         mj <- MSEED - subtraction
 
-        seedArray.[55] <- mj
+        seedArray[55] <- mj
 
         mk <- 1
 
         for i = 1 to 54 do
             ii <- (21 * i) % 55
-            seedArray.[ii] <- mk
+            seedArray[ii] <- mk
             mk <- mj - mk
 
             if mk < 0 then
                 mk <- mk + MBIG
 
-            mj <- seedArray.[ii]
+            mj <- seedArray[ii]
 
         for k = 1 to 4 do
             for i = 1 to 55 do
-                seedArray.[i] <- seedArray.[i] - seedArray.[1 + (i + 30) % 55]
+                seedArray[i] <- seedArray[i] - seedArray[1 + (i + 30) % 55]
 
-                if seedArray.[i] < 0 then
-                    seedArray.[i] <- seedArray.[i] + MBIG
+                if seedArray[i] < 0 then
+                    seedArray[i] <- seedArray[i] + MBIG
 
         inext <- 0
         inextp <- 21
@@ -117,7 +117,7 @@ type Seeded(seed: int) =
         if locINextp >= 56 then
             locINextp <- 1
 
-        retVal <- seedArray.[locINext] - seedArray.[locINextp]
+        retVal <- seedArray[locINext] - seedArray[locINextp]
 
         if retVal = MBIG then
             retVal <- retVal - 1
@@ -125,7 +125,7 @@ type Seeded(seed: int) =
         if retVal < 0 then
             retVal <- retVal + MBIG
 
-        seedArray.[locINext] <- retVal
+        seedArray[locINext] <- retVal
 
         inext <- locINext
         inextp <- locINextp
@@ -175,7 +175,7 @@ type Seeded(seed: int) =
                 raise <| ArgumentNullException("Buffer cannot be null")
 
             for i = 0 to buffer.Length - 1 do
-                buffer.[i] <- byte ((int (this.InternalSample())) % (int Byte.MaxValue + 1))
+                buffer[i] <- byte ((int (this.InternalSample())) % (int Byte.MaxValue + 1))
 
 let nonSeeded () = NonSeeded()
 let seeded seed = Seeded(seed)

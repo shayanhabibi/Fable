@@ -35,7 +35,7 @@ let private createReleaseCommitAndPush (version: LastVersionFinder.Version) =
     let versionText = version.Version.ToString()
 
     Git.addAll ()
-    Git.commit ($"Release {versionText}")
+    Git.commit $"Release {versionText}"
     Git.push ()
 
 let handle (args: string list) =

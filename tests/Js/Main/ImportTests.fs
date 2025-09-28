@@ -170,10 +170,10 @@ let tests =
 
     testCase "Import with relative paths from external files works" <| fun () ->
         // Import expressions
-        Fable.Tests.Util4.foo |> equal "foo"
-        Fable.Tests.Util4.bar |> equal 5
+        Util4.foo |> equal "foo"
+        Util4.bar |> equal 5
         // Import attribute
-        Fable.Tests.Util4.bar2 |> equal 5
+        Util4.bar2 |> equal 5
 
     testCase "Import with curried signatures works" <| fun () ->
         // If the import is in another file and cross-module opt (--crossoptimize+) is enabled,
@@ -190,27 +190,27 @@ let tests =
         Util.four |> equal 4
 
     testCase "Including JS files in compilation works" <| fun () ->
-        Fable.Tests.DllRef.Lib.foo |> equal "foo"
+        Lib.foo |> equal "foo"
 
     testCase "Including JS files with same name works" <| fun () ->
-        Fable.Tests.DllRef.Lib.fooGenerator 3 |> equal "foofoofoo"
+        Lib.fooGenerator 3 |> equal "foofoofoo"
 
     testCase "Including same JS file from different F# sources works" <| fun () ->
-        Fable.Tests.DllRef.Lib2.foo |> equal "foo"
+        Lib2.foo |> equal "foo"
 
     testCase "Default imports work" <| fun () ->
-        Fable.Tests.DllRef.Lib2.bar |> equal "bar"
+        Lib2.bar |> equal "bar"
 
     testCase "Classes from included JS files work" <| fun () ->
-        let x = Fable.Tests.DllRef.Lib2.Bar(2, "ho")
+        let x = Lib2.Bar(2, "ho")
         x.generator() |> equal "hoho"
 
     testCase "Files in outDir don't conflict" <| fun () -> // See #2259
-        Fable.Tests.DllRef.Lib2.value |> equal 10
+        Lib2.value |> equal 10
         Fable.Tests.DllRef2.Lib2.value |> equal 20
 
     testCase "Referencing a Fable project through a dll works" <| fun () ->
-        Fable.Tests.DllRef.Util.add2 5 |> equal 7
+        Util.add2 5 |> equal 7
 
     testCase "Root members with JS non-valid chars work" <| fun () -> // See #207
         Lib.足す 3 2 |> equal 5

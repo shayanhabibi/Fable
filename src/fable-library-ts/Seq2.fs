@@ -7,7 +7,7 @@ open System.Collections.Generic
 let distinct<'T> (xs: seq<'T>) ([<Inject>] comparer: IEqualityComparer<'T>) =
     Seq.delay (fun () ->
         let hashSet = HashSet<'T>(comparer)
-        xs |> Seq.filter (fun x -> hashSet.Add(x))
+        xs |> Seq.filter hashSet.Add
     )
 
 let distinctBy<'T, 'Key when 'Key: not null>
@@ -23,7 +23,7 @@ let distinctBy<'T, 'Key when 'Key: not null>
 let except<'T> (itemsToExclude: seq<'T>) (xs: seq<'T>) ([<Inject>] comparer: IEqualityComparer<'T>) =
     Seq.delay (fun () ->
         let hashSet = HashSet<'T>(itemsToExclude, comparer)
-        xs |> Seq.filter (fun x -> hashSet.Add(x))
+        xs |> Seq.filter hashSet.Add
     )
 
 let countBy<'T, 'Key when 'Key: not null>
@@ -40,12 +40,12 @@ let countBy<'T, 'Key when 'Key: not null>
             let key = projection x
 
             match dict.TryGetValue(key) with
-            | true, prev -> dict.[key] <- prev + 1
+            | true, prev -> dict[key] <- prev + 1
             | false, _ ->
-                dict.[key] <- 1
+                dict[key] <- 1
                 keys.Add(key)
 
-        Seq.map (fun key -> key, dict.[key]) keys
+        Seq.map (fun key -> key, dict[key]) keys
     )
 
 let groupBy<'T, 'Key when 'Key: not null>
@@ -68,7 +68,7 @@ let groupBy<'T, 'Key when 'Key: not null>
                 dict.Add(key, ResizeArray [| x |])
                 keys.Add(key)
 
-        Seq.map (fun key -> key, dict.[key] :> seq<'T>) keys
+        Seq.map (fun key -> key, dict[key] :> seq<'T>) keys
     )
 
 module Array =

@@ -98,7 +98,7 @@ let tests =
 
     testCaseAsync "Timeout does not throw if the work completes before it expires" <|
         async {
-            let tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously)
+            let tcs = TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously)
             // Start a timeout task/async operation, but do not wait for its completion right now
             let timeoutTask = Async.TimeoutAfter(TimeSpan.FromMilliseconds(200.0), tcs.Task)
             // Complete the work task
@@ -110,7 +110,7 @@ let tests =
 
     testCaseAsync "Timeout throws if it expires before the work is done" <|
         async {
-            let tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously)
+            let tcs = TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously)
             // Start a timeout task/async operation, but do not wait for its completion right now
             let timeoutTask = Async.TimeoutAfter(TimeSpan.FromMilliseconds(200.0), tcs.Task)
             // Wait for expiration
@@ -147,7 +147,7 @@ let tests =
                     path [root; "MyRepo"; "src"]
             ]
 
-        for (inputFiles, expectedBasePath) in cases do
+        for inputFiles, expectedBasePath in cases do
             yield testCase (string inputFiles) (fun _ ->
                 let result = Fable.Cli.Main.FileWatcherUtil.getCommonBaseDir inputFiles
                 Expect.equal result expectedBasePath ""
@@ -160,8 +160,8 @@ let tests =
         fun usePolling tempFolder ->
             async {
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -183,8 +183,8 @@ let tests =
         fun usePolling tempFolder ->
             async {
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -209,8 +209,8 @@ let tests =
                 File.WriteAllText(testFilePath, "content")
 
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -227,7 +227,7 @@ let tests =
                 // FIXME: Asynchronously waiting with `do! Async.Sleep(1000)`
                 //        results in the FSW not reporting our events anymmore (?!)
                 //        (I tested this on Ubuntu WSL2 only)
-                System.Threading.Thread.Sleep(oneSecond)
+                Thread.Sleep(oneSecond)
 
                 File.WriteAllText(testFilePath, "changed content")
 
@@ -243,8 +243,8 @@ let tests =
                 File.WriteAllText(testFilePath, "content")
 
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -270,8 +270,8 @@ let tests =
                 File.WriteAllText(srcFile, "content")
 
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -316,8 +316,8 @@ let tests =
                         ]
 
                     use watcher = createWatcher tempFolder usePolling []
-                    let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                    let filesChanged = new HashSet<string>()
+                    let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                    let filesChanged = HashSet<string>()
 
                     let onFileChange = fun path ->
                         filesChanged.Add(path) |> ignore
@@ -335,7 +335,7 @@ let tests =
                     // FIXME: Asynchronously waiting with `do! Async.Sleep(1000)`
                     //        results in the FSW not reporting our events anymmore (?!)
                     //        (I tested this on Ubuntu WSL2 only)
-                    System.Threading.Thread.Sleep(oneSecond)
+                    Thread.Sleep(oneSecond)
 
                     File.WriteAllText(newFilePath, "")
                     File.WriteAllText(changedFilePath, "changed content")
@@ -367,8 +367,8 @@ let tests =
                 File.WriteAllText(srcForRenamedFilePath, "content")
 
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -388,7 +388,7 @@ let tests =
                 // FIXME: Asynchronously waiting with `do! Async.Sleep(1000)`
                 //        results in the FSW not reporting our events anymmore (?!)
                 //        (I tested this on Ubuntu WSL2 only)
-                System.Threading.Thread.Sleep(oneSecond)
+                Thread.Sleep(oneSecond)
 
                 File.WriteAllText(newFilePath, "content")
                 File.WriteAllText(changedFilePath, "new content")
@@ -422,8 +422,8 @@ let tests =
                 File.WriteAllText(srcForRenamedFilePath, "content")
 
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -443,7 +443,7 @@ let tests =
                 // FIXME: Asynchronously waiting with `do! Async.Sleep(1000)`
                 //        results in the FSW not reporting our events anymmore (?!)
                 //        (I tested this on Ubuntu WSL2 only)
-                System.Threading.Thread.Sleep(oneSecond)
+                Thread.Sleep(oneSecond)
 
                 File.WriteAllText(newFilePath, "content")
                 File.WriteAllText(changedFilePath, "new content")
@@ -485,8 +485,8 @@ let tests =
                     ]
 
                 use watcher = createWatcher tempFolder usePolling []
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -520,8 +520,8 @@ let tests =
                 let ignoredChanges = [ shouldIgnorePath1; shouldIgnorePath2 ]
 
                 use watcher = createWatcher tempFolder usePolling filters
-                let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
-                let filesChanged = new HashSet<string>()
+                let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                let filesChanged = HashSet<string>()
 
                 let onFileChange = fun path ->
                     filesChanged.Add(path) |> ignore
@@ -563,20 +563,20 @@ let tests =
                 let subDirs = [ subdirPath1; subdirPath2; subdirPath3 ]
                 let testFilePaths = [ testFilePath1; testFilePath2; testFilePath3 ]
 
-                let results = [ new HashSet<string>(); new HashSet<string>(); new HashSet<string>() ]
+                let results = [ HashSet<string>(); HashSet<string>(); HashSet<string>() ]
 
                 use watcher = createWatcherWithoutPath usePolling []
 
                 for i in 0..2 do
-                    let dir = subDirs.[i]
-                    let file = testFilePaths.[i]
-                    let filesChanged = results.[i]
+                    let dir = subDirs[i]
+                    let file = testFilePaths[i]
+                    let filesChanged = results[i]
 
                     Directory.CreateDirectory(dir) |> ignore
 
                     watcher.BasePath <- dir
 
-                    let tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+                    let tcs = TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
 
                     let onFileChange = fun path ->
                         filesChanged.Add(path) |> ignore
@@ -592,9 +592,9 @@ let tests =
 
                     eventSubscription.Dispose()
 
-                Expect.sequenceEqual results.[0] [ testFilePath1 ] "Expected one change in the first directory"
-                Expect.sequenceEqual results.[1] [ testFilePath2 ] "Expected one change in the second directory"
-                Expect.sequenceEqual results.[2] [ testFilePath3 ] "Expected one change in the third directory"
+                Expect.sequenceEqual results[0] [ testFilePath1 ] "Expected one change in the first directory"
+                Expect.sequenceEqual results[1] [ testFilePath2 ] "Expected one change in the second directory"
+                Expect.sequenceEqual results[2] [ testFilePath3 ] "Expected one change in the third directory"
             }
     ]
   ]

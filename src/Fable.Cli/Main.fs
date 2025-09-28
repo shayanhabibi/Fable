@@ -10,7 +10,6 @@ open FSharp.Compiler.Symbols
 
 open Fable
 open Fable.AST
-open Fable.Transforms
 open Fable.Transforms.State
 open Fable.Compiler.ProjectCracker
 open Fable.Compiler.Util
@@ -250,7 +249,7 @@ type FsWatcher(delayMs: int) =
 
         let watcher: IFileSystemWatcher =
             if usePolling then
-                Log.always ("Using polling watcher.")
+                Log.always "Using polling watcher."
                 // Ignored for performance reasons:
                 let ignoredDirectoryNameRegexes =
                     [ "(?i)node_modules"; "(?i)bin"; "(?i)obj"; "\..+" ]
@@ -267,7 +266,7 @@ type FsWatcher(delayMs: int) =
         Observable.SingleObservable(fun () -> watcher.EnableRaisingEvents <- false)
 
     do
-        watcher.OnFileChange.Add(fun path -> observable.Trigger(path))
+        watcher.OnFileChange.Add observable.Trigger
 
         watcher.OnError.Add(fun ev -> Log.verbose (lazy $"[WATCHER] {ev.GetException().Message}"))
 
@@ -616,7 +615,7 @@ and FableCompiler(checker: InteractiveChecker, projCracked: ProjectCracked, fabl
                                         // If the message is longer than the terminal width it will jump to next line
                                         let msg =
                                             if msg.Length > 80 then
-                                                msg.[..80] + "..."
+                                                msg[..80] + "..."
                                             else
                                                 msg
 
@@ -742,7 +741,7 @@ type Watcher =
                             |> Array.choose (fun f ->
                                 let path = f.NormalizedFullPath
 
-                                if Naming.isInFableModules (path) then
+                                if Naming.isInFableModules path then
                                     None
                                 else
                                     Some path
@@ -1101,7 +1100,7 @@ let private compilationCycle (state: State) (changes: ISet<string>) =
                     | Severity.Warning ->
                         match log.FileName with
                         | Some filename when
-                            Naming.isInFableModules (filename) || not (filesToCompile.Contains(filename))
+                            Naming.isInFableModules filename || not (filesToCompile.Contains(filename))
                             ->
                             false
                         | _ -> true
@@ -1154,20 +1153,20 @@ let private compilationCycle (state: State) (changes: ISet<string>) =
                             // (if I use Async.StartChild, assembly generation doesn't seem to start until serialization is finished)
                             let dllPath = PrecompiledInfoImpl.GetDllPath(projCracked.FableModulesDir)
 
-                            Log.always ("Generating assembly...")
+                            Log.always "Generating assembly..."
 
                             let! (diagnostics, result), ms =
                                 Performance.measureAsync <| fun _ -> fableCompiler.CompileToFile(dllPath)
 
-                            Log.always ($"Assembly generated in {ms}ms")
+                            Log.always $"Assembly generated in {ms}ms"
 
                             match result with
                             | Some ex ->
                                 getFSharpDiagnostics diagnostics |> logErrors cliArgs.RootDir
-                                Log.error (ex.Message)
+                                Log.error ex.Message
                                 return 1
                             | None ->
-                                Log.always ($"Saving precompiled info...")
+                                Log.always $"Saving precompiled info..."
                                 let! fableProj = fableCompiler.GetFableProject()
 
                                 let _, ms =
@@ -1197,7 +1196,7 @@ let private compilationCycle (state: State) (changes: ISet<string>) =
                                             fableLibDir = projCracked.FableLibDir
                                         )
 
-                                Log.always ($"Precompiled info saved in {ms}ms")
+                                Log.always $"Precompiled info saved in {ms}ms"
                                 return 0
                     | _ -> return 0
                 }

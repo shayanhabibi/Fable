@@ -59,7 +59,7 @@ Jest.describe("React tests", (fun () ->
     Jest.test("SpreadSheet parser works", (fun () ->
         let spreadsheet = RTL.render(SpreadSheet.SpreadSheet() |> unbox)
         let cells = spreadsheet.getAllByRole("cell")
-        let cell = cells.[5]
+        let cell = cells[5]
         RTL.fireEvent.click(cell)
         let input = spreadsheet.getByAltText("cell editor")
         RTL.fireEvent.input(input, [
@@ -68,7 +68,7 @@ Jest.describe("React tests", (fun () ->
             ]
         ])
         // Click another cell to remove the editor
-        RTL.fireEvent.click(cells.[8])
+        RTL.fireEvent.click(cells[8])
         Jest.expect(cell).toHaveTextContent("7")
     ))
 

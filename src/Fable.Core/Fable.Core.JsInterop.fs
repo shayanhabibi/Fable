@@ -3,6 +3,8 @@ module Fable.Core.JsInterop
 open System
 open Fable.Core
 
+#nowarn 1182 // ignore unused variable warning
+
 /// Compiles to ?? operator in JavaScript
 [<Emit("$0 ?? $1")>]
 let (??=) (nullable: 'T) (defaultValue: 'T) : 'T = nativeOnly

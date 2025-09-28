@@ -9,25 +9,13 @@ open Fable.Transforms
 
 type ICompiler = FSharp2Fable.IFableCompiler
 
-let curryExprAtRuntime (com: Compiler) arity (expr: Expr) =
-    match com.Options.Language with
-    // | Rust -> Rust.Replacements.curryExprAtRuntime com arity expr
-    // | Python -> Helper.LibCall(com, "Util", "curry", expr.Type, [makeIntConst arity; expr])
-    | _ -> Util.curryExprAtRuntime com arity expr
+let curryExprAtRuntime (com: Compiler) arity (expr: Expr) = Util.curryExprAtRuntime com arity expr
 
 let uncurryExprAtRuntime (com: Compiler) arity (expr: Expr) =
-    match com.Options.Language with
-    // | Rust -> Rust.Replacements.uncurryExprAtRuntime com expr.Type arity expr
-    // | Python -> Helper.LibCall(com, "Util", "uncurry", expr.Type, [makeIntConst arity; expr])
-    | _ -> Util.uncurryExprAtRuntime com arity expr
+    Util.uncurryExprAtRuntime com arity expr
 
 let partialApplyAtRuntime (com: Compiler) t arity (fn: Expr) (args: Expr list) =
-    match com.Options.Language with
-    // | Rust -> Rust.Replacements.partialApplyAtRuntime com t arity fn args
-    // | Python ->
-    //     let args = NewArray(ArrayValues args, Any, MutableArray) |> makeValue None
-    //     Helper.LibCall(com, "Util", "partialApply", t, [makeIntConst arity; fn; args])
-    | _ -> Util.partialApplyAtRuntime com t arity fn args
+    Util.partialApplyAtRuntime com t arity fn args
 
 let tryField (com: ICompiler) returnTyp ownerTyp fieldName =
     JS.Replacements.tryField com returnTyp ownerTyp fieldName
@@ -47,10 +35,7 @@ let error (com: ICompiler) msg = JS.Replacements.error com msg
 
 let defaultof (com: ICompiler) ctx r typ = JS.Replacements.defaultof com ctx r typ
 
-let createMutablePublicValue (com: ICompiler) value =
-    match com.Options.Language with
-    | JavaScript
-    | TypeScript -> JS.Replacements.createAtom com value
+let createMutablePublicValue (com: ICompiler) value = JS.Replacements.createAtom com value
 
 let getRefCell (com: ICompiler) r typ (expr: Expr) =
     JS.Replacements.getRefCell com r typ expr

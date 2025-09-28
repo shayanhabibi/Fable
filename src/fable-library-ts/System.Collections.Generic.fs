@@ -42,7 +42,7 @@ type Stack<'T> private (initialContents, initialCount) =
     let mutable contents = initialContents
     let mutable count = initialCount
 
-    new(initialCapacity: int) = Stack<'T>(Array.zeroCreate<'T> (initialCapacity), 0)
+    new(initialCapacity: int) = Stack<'T>(Array.zeroCreate<'T> initialCapacity, 0)
 
     new() = Stack<'T>(4)
 
@@ -63,16 +63,16 @@ type Stack<'T> private (initialContents, initialCount) =
 
     member _.Pop() =
         count <- count - 1
-        contents.[count]
+        contents[count]
 
-    member _.Peek() = contents.[count - 1]
+    member _.Peek() = contents[count - 1]
 
     member _.Contains(x: 'T) =
         let mutable found = false
         let mutable i = 0
 
         while i < count && not found do
-            if System.Object.Equals(x, contents.[i]) then
+            if System.Object.Equals(x, contents[i]) then
                 found <- true
             else
                 i <- i + 1
@@ -95,7 +95,7 @@ type Stack<'T> private (initialContents, initialCount) =
 
     member this.Push(x) =
         this.Ensure(count + 1)
-        contents.[count] <- x
+        contents[count] <- x
         count <- count + 1
 
     member _.Clear() =
@@ -107,7 +107,7 @@ type Stack<'T> private (initialContents, initialCount) =
             this.Ensure(count)
 
     member _.ToArray() =
-        Array.init count (fun i -> contents.[count - 1 - i])
+        Array.init count (fun i -> contents[count - 1 - i])
 
     interface IEnumerable<'T> with
         member _.GetEnumerator() =
@@ -115,7 +115,7 @@ type Stack<'T> private (initialContents, initialCount) =
                 let mutable index = count - 1
 
                 while index >= 0 do
-                    yield contents.[index]
+                    yield contents[index]
                     index <- index - 1
             })
                 .GetEnumerator()
@@ -161,7 +161,7 @@ type Queue<'T> private (initialContents, initialCount) =
             let mutable i = 0
 
             while i < count do
-                yield contents.[i |> toIndex]
+                yield contents[i |> toIndex]
                 i <- i + 1
         }
 
@@ -170,7 +170,7 @@ type Queue<'T> private (initialContents, initialCount) =
         if initialCapacity < 0 then
             raise (System.ArgumentOutOfRangeException("capacity is less than 0"))
 
-        Queue<'T>(Array.zeroCreate<'T> (initialCapacity), 0)
+        Queue<'T>(Array.zeroCreate<'T> initialCapacity, 0)
 
     new() = Queue<'T>(4)
 
@@ -185,7 +185,7 @@ type Queue<'T> private (initialContents, initialCount) =
         if count = size () then
             ensure (count + 1)
 
-        contents.[tail] <- value
+        contents[tail] <- value
         tail <- (tail + 1) % size ()
         count <- count + 1
 
@@ -193,7 +193,7 @@ type Queue<'T> private (initialContents, initialCount) =
         if count = 0 then
             invalidOp "Queue is empty"
 
-        let value = contents.[head]
+        let value = contents[head]
         head <- (head + 1) % size ()
         count <- count - 1
         value
@@ -202,7 +202,7 @@ type Queue<'T> private (initialContents, initialCount) =
         if count = 0 then
             invalidOp "Queue is empty"
 
-        contents.[head]
+        contents[head]
 
     member this.TryDequeue(result: 'T byref) : bool =
         if count = 0 then
@@ -223,7 +223,7 @@ type Queue<'T> private (initialContents, initialCount) =
         let mutable i = 0
 
         while i < count && not found do
-            if System.Object.Equals(x, contents.[i |> toIndex]) then
+            if System.Object.Equals(x, contents[i |> toIndex]) then
                 found <- true
             else
                 i <- i + 1
@@ -238,7 +238,7 @@ type Queue<'T> private (initialContents, initialCount) =
 
     member _.TrimExcess() =
         if float count / float contents.Length > 0.9 then
-            ensure (count)
+            ensure count
 
     member _.ToArray() = toSeq () |> Seq.toArray
 
@@ -246,7 +246,7 @@ type Queue<'T> private (initialContents, initialCount) =
         let mutable i = start
 
         for item in toSeq () do
-            target.[i] <- item
+            target[i] <- item
             i <- i + 1
 
     interface IEnumerable<'T> with

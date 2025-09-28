@@ -2,6 +2,8 @@ namespace Fable.Core
 
 open System
 
+#nowarn 1182 // ignore unused variable warning
+
 [<AutoOpen>]
 module Extensions =
     type FormattableString with
@@ -34,7 +36,7 @@ module Extensions =
         [<Emit("$0.lastIndex{{=$1}}")>]
         member _.lastIndex
             with get (): int = nativeOnly
-            and set (i): unit = nativeOnly
+            and set i: unit = nativeOnly
 
 module DynamicExtensions =
     type Object with

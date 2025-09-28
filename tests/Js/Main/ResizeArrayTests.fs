@@ -65,7 +65,7 @@ let tests =
 
     testCase "ResizeArray.ConvertAll works" <| fun () ->
         let xs = ResizeArray<_> [1.; 2.; 3.; 4.]
-        let ys = xs.ConvertAll(System.Converter(fun x -> int x))
+        let ys = xs.ConvertAll(System.Converter int)
         ys |> Seq.toList |> equal [1;2;3;4]
 
     testCase "ResizeArray.Find works" <| fun () ->
@@ -250,7 +250,7 @@ let tests =
 
     testCase "ResizeArray.SortInPlaceWith works with custom comparer" <| fun () -> // See #1386
         let ns = ResizeArray<int> [1;3;2]
-        let comparer = System.Collections.Generic.Comparer<int>.Default
+        let comparer = Comparer<int>.Default
         ns.Sort(comparer)
         Seq.toList ns |> equal [1;2;3]
 
@@ -274,7 +274,7 @@ let tests =
         |> equal true
 
     testCase "ResizeArray.Remove works with non-primitive types" <| fun _ ->
-        let myResizeArray = new ResizeArray<Animal>()
+        let myResizeArray = ResizeArray<Animal>()
         myResizeArray.Add (Duck 5)
         myResizeArray.Remove (Duck 3) |> ignore
         myResizeArray.Count |> equal 1
@@ -284,14 +284,14 @@ let tests =
         myResizeArray.Count |> equal 0
 
     testCase "ResizeArray.Contains works with non-primitive types" <| fun _ ->
-        let myResizeArray = new ResizeArray<Animal>()
+        let myResizeArray = ResizeArray<Animal>()
         myResizeArray.Add (Duck 5)
         myResizeArray.Contains (Duck 3) |> equal false
         myResizeArray.Contains (Dog 5) |> equal false
         myResizeArray.Contains (Duck 5) |> equal true
 
     testCase "ResizeArray.IndexOf works with non-primitive types" <| fun _ ->
-        let myResizeArray = new ResizeArray<Animal>()
+        let myResizeArray = ResizeArray<Animal>()
         myResizeArray.Add (Duck 5)
         myResizeArray.IndexOf (Duck 3) |> equal -1
         myResizeArray.IndexOf (Dog 5) |> equal -1

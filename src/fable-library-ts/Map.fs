@@ -522,7 +522,7 @@ module MapTree =
 
         iter
             (fun x y ->
-                arr.[j] <- KeyValuePair(x, y)
+                arr[j] <- KeyValuePair(x, y)
                 j <- j + 1
             )
             m
@@ -538,7 +538,7 @@ module MapTree =
 
     let rec mkFromEnumerator comparer acc (e: IEnumerator<_>) =
         if e.MoveNext() then
-            let (x, y) = e.Current
+            let x, y = e.Current
             mkFromEnumerator comparer (add comparer x y acc) e
         else
             acc
@@ -546,7 +546,7 @@ module MapTree =
     let ofArray comparer (arr: array<'Key * 'Value>) =
         let mutable res = empty
 
-        for (x, y) in arr do
+        for x, y in arr do
             res <- add comparer x y res
 
         res
@@ -604,7 +604,7 @@ module MapTree =
                 match m with
                 | :? MapTreeNode<'Key, 'Value> ->
                     failwith "Please report error: Map iterator, unexpected stack for current"
-                | _ -> new KeyValuePair<_, _>(m.Key, m.Value)
+                | _ -> KeyValuePair<_, _>(m.Key, m.Value)
         else
             notStarted ()
 
@@ -830,7 +830,7 @@ type Map<[<EqualityConditionalOn>] 'Key, [<EqualityConditionalOn; ComparisonCond
         let combineHash x y = (x <<< 1) + y + 631
         let mutable res = 0
 
-        for (KeyValue(x, y)) in this do
+        for KeyValue(x, y) in this do
             res <- combineHash res (hash x)
             res <- combineHash res (Unchecked.hash y)
 
@@ -862,7 +862,7 @@ type Map<[<EqualityConditionalOn>] 'Key, [<EqualityConditionalOn; ComparisonCond
         member _.``Symbol.toStringTag`` = "FSharpMap"
 
     interface IJsonSerializable with
-        member this.toJSON() = JS.Constructors.Array.from (this)
+        member this.toJSON() = JS.Constructors.Array.from this
 
     interface IEnumerable<KeyValuePair<'Key, 'Value>> with
         member _.GetEnumerator() = MapTree.mkIEnumerator tree
@@ -914,7 +914,7 @@ type Map<[<EqualityConditionalOn>] 'Key, [<EqualityConditionalOn; ComparisonCond
             raise (System.NotSupportedException("Map cannot be mutated"))
 
         member m.Contains x =
-            m.ContainsKey x.Key && Unchecked.equals m.[x.Key] x.Value
+            m.ContainsKey x.Key && Unchecked.equals m[x.Key] x.Value
 
         member m.CopyTo(arr, i) = MapTree.copyToArray tree arr i
         member m.IsReadOnly = true
@@ -937,7 +937,7 @@ type Map<[<EqualityConditionalOn>] 'Key, [<EqualityConditionalOn; ComparisonCond
             failwith "Map cannot be mutated"
             ()
 
-        member m.delete(_) =
+        member m.delete _ =
             failwith "Map cannot be mutated"
             false
 
@@ -975,7 +975,7 @@ let add key value (table: Map<_, _>) = table.Add(key, value)
 let change key f (table: Map<_, _>) = table.Change(key, f)
 
 // [<CompiledName("Find")>]
-let find key (table: Map<_, _>) = table.[key]
+let find key (table: Map<_, _>) = table[key]
 
 // [<CompiledName("TryFind")>]
 let tryFind key (table: Map<_, _>) = table.TryFind key

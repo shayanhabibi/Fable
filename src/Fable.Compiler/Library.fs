@@ -84,7 +84,7 @@ type BabelWriter
         member _.AddLog(msg, severity, ?range) =
             com.AddLog(msg, severity, ?range = range, fileName = com.CurrentFile)
 
-        member _.AddSourceMapping(srcLine, srcCol, genLine, genCol, file, displayName) =
+        member _.AddSourceMapping(_srcLine, _srcCol, _genLine, _genCol, _file, _displayName) =
             //
             ()
 //     if cliArgs.SourceMaps then

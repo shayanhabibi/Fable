@@ -19,6 +19,6 @@ let simple () =
 let tests = testList "Adaptive" [
     testCase "FSharp.Data.Adaptive works" <| fun () -> // See #2291
         let first, second = simple ()
-        equal 4 first.[0]
-        equal 1 second.[0]
+        equal 4 first[0]
+        equal 1 second[0]
 ]

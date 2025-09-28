@@ -71,7 +71,7 @@ type IBabelCompiler =
     abstract TransformImport: Context * selector: string * path: string -> Expression
 
     abstract TransformFunction:
-        Context * string option * Fable.Ident list * Fable.Expr -> (Parameter array) * BlockStatement
+        Context * string option * Fable.Ident list * Fable.Expr -> Parameter array * BlockStatement
 
     abstract WarnOnlyOnce: string * ?range: SourceLocation -> unit
 
@@ -166,7 +166,7 @@ module Reflection =
     let private transformRecordReflectionInfo com ctx r (ent: Fable.Entity) generics =
         // TODO: Refactor these three bindings to reuse in transformUnionReflectionInfo
         let fullname = ent.FullName
-        let fullnameExpr = Expression.stringLiteral (fullname)
+        let fullnameExpr = Expression.stringLiteral fullname
 
         let genMap =
             let genParamNames =
@@ -181,16 +181,16 @@ module Reflection =
 
                 let typeInfo = transformTypeInfoFor Reflection com ctx r genMap fi.FieldType
 
-                Expression.arrayExpression ([| fieldName; typeInfo |])
+                Expression.arrayExpression [| fieldName; typeInfo |]
             )
             |> List.toArray
 
         let fields =
-            Expression.arrowFunctionExpression ([||], Expression.arrayExpression (fields))
+            Expression.arrowFunctionExpression ([||], Expression.arrayExpression fields)
 
         [
             fullnameExpr
-            Expression.arrayExpression (generics)
+            Expression.arrayExpression generics
             jsConstructor com ctx ent
             fields
         ]
@@ -198,7 +198,7 @@ module Reflection =
 
     let private transformUnionReflectionInfo com ctx r (ent: Fable.Entity) generics =
         let fullname = ent.FullName
-        let fullnameExpr = Expression.stringLiteral (fullname)
+        let fullnameExpr = Expression.stringLiteral fullname
 
         let genMap =
             let genParamNames =
@@ -211,23 +211,22 @@ module Reflection =
             |> Seq.map (fun uci ->
                 uci.UnionCaseFields
                 |> List.mapToArray (fun fi ->
-                    Expression.arrayExpression (
+                    Expression.arrayExpression
                         [|
                             fi.Name |> Expression.stringLiteral
                             transformTypeInfoFor Reflection com ctx r genMap fi.FieldType
                         |]
-                    )
                 )
                 |> Expression.arrayExpression
             )
             |> Seq.toArray
 
         let cases =
-            Expression.arrowFunctionExpression ([||], Expression.arrayExpression (cases))
+            Expression.arrowFunctionExpression ([||], Expression.arrayExpression cases)
 
         [
             fullnameExpr
-            Expression.arrayExpression (generics)
+            Expression.arrayExpression generics
             jsConstructor com ctx ent
             cases
         ]
@@ -249,8 +248,7 @@ module Reflection =
             getNumberKindName kind |> primitiveTypeInfo
 
         let nonGenericTypeInfo fullname =
-            [ Expression.stringLiteral (fullname) ]
-            |> libReflectionCall com ctx None "class"
+            [ Expression.stringLiteral fullname ] |> libReflectionCall com ctx None "class"
 
         let resolveGenerics generics : Expression list =
             generics |> List.map (transformTypeInfoFor purpose com ctx r genMap)
@@ -266,9 +264,9 @@ module Reflection =
                 None
                 "class"
                 [
-                    Expression.stringLiteral (fullname)
+                    Expression.stringLiteral fullname
                     if not (Array.isEmpty generics) then
-                        Expression.arrayExpression (generics)
+                        Expression.arrayExpression generics
                 ]
 
         let genericGlobalOrImportedEntity generics (ent: Fable.Entity) =
@@ -278,10 +276,10 @@ module Reflection =
                 None
                 "class"
                 [
-                    yield Expression.stringLiteral (ent.FullName)
+                    yield Expression.stringLiteral ent.FullName
                     match generics with
                     | [||] -> yield Util.undefined None None
-                    | generics -> yield Expression.arrayExpression (generics)
+                    | generics -> yield Expression.arrayExpression generics
                     match tryJsConstructorFor purpose com ctx ent with
                     | Some cons -> yield cons
                     | None -> ()
@@ -292,7 +290,7 @@ module Reflection =
         | Fable.Any -> primitiveTypeInfo "obj"
         | Fable.GenericParam(name = name) ->
             match genMap with
-            | None -> [ Expression.stringLiteral (name) ] |> libReflectionCall com ctx None "generic"
+            | None -> [ Expression.stringLiteral name ] |> libReflectionCall com ctx None "generic"
             | Some genMap ->
                 match Map.tryFind name genMap with
                 | Some t -> t
@@ -317,18 +315,17 @@ module Reflection =
                         | name ->
                             let value =
                                 match fi.LiteralValue with
-                                | Some v -> System.Convert.ToDouble v
+                                | Some v -> Convert.ToDouble v
                                 | None -> 0.
 
-                            Expression.arrayExpression (
-                                [| Expression.stringLiteral (name); Expression.numericLiteral (value) |]
-                            )
+                            Expression.arrayExpression
+                                [| Expression.stringLiteral name; Expression.numericLiteral value |]
                             |> Some
                     )
                     |> Seq.toArray
                     |> Expression.arrayExpression
 
-                [ Expression.stringLiteral (entRef.FullName); numberInfo kind; cases ]
+                [ Expression.stringLiteral entRef.FullName; numberInfo kind; cases ]
                 |> libReflectionCall com ctx None "enum"
             | _ -> numberInfo kind
         | Fable.LambdaType(argType, returnType) -> genericTypeInfo "lambda" [ argType; returnType ]
@@ -345,7 +342,7 @@ module Reflection =
             let genArgs = resolveGenerics genArgs
 
             List.zip (fieldNames |> Array.toList) genArgs
-            |> List.map (fun (k, t) -> Expression.arrayExpression [| Expression.stringLiteral (k); t |])
+            |> List.map (fun (k, t) -> Expression.arrayExpression [| Expression.stringLiteral k; t |])
             |> libReflectionCall com ctx None "anonRecord"
         | Fable.DeclaredType(entRef, genArgs) ->
             let fullName = entRef.FullName
@@ -422,7 +419,7 @@ module Reflection =
                     elif ent.IsInterface || FSharp2Fable.Util.isReplacementCandidate entRef then
                         genericEntity ent.FullName generics
                     elif ent.IsMeasure then
-                        [ Expression.stringLiteral (ent.FullName) ]
+                        [ Expression.stringLiteral ent.FullName ]
                         |> libReflectionCall com ctx None "measure"
                     else
                         let reflectionMethodExpr =
@@ -441,10 +438,10 @@ module Reflection =
             let fullname = ent.FullName
 
             [
-                yield Expression.stringLiteral (fullname)
+                yield Expression.stringLiteral fullname
                 match generics with
                 | [||] -> yield Util.undefined None None
-                | generics -> yield Expression.arrayExpression (generics)
+                | generics -> yield Expression.arrayExpression generics
                 match tryJsConstructorFor Reflection com ctx ent with
                 | Some cons -> yield cons
                 | None -> yield Util.undefined None None
@@ -467,19 +464,19 @@ module Reflection =
         let warnAndEvalToFalse msg =
             "Cannot type test (evals to false): " + msg |> addWarning com [] range
 
-            Expression.booleanLiteral (false)
+            Expression.booleanLiteral false
 
         let jsTypeof (primitiveType: string) (Util.TransformExpr com ctx expr) : Expression =
             let typeof = Expression.unaryExpression ("typeof", expr)
 
-            Expression.binaryExpression (BinaryEqual, typeof, Expression.stringLiteral (primitiveType), ?loc = range)
+            Expression.binaryExpression (BinaryEqual, typeof, Expression.stringLiteral primitiveType, ?loc = range)
 
         let jsInstanceof consExpr (Util.TransformExpr com ctx expr) : Expression =
             BinaryExpression(expr, consExpr, "instanceof", range)
 
         match typ with
         | Fable.Measure _ // Dummy, shouldn't be possible to test against a measure type
-        | Fable.Any -> Expression.booleanLiteral (true)
+        | Fable.Any -> Expression.booleanLiteral true
         | Fable.Unit -> com.TransformAsExpr(ctx, expr) |> Util.makeNullCheck range true
         | Fable.Boolean -> jsTypeof "boolean" expr
         | Fable.Char
@@ -487,7 +484,7 @@ module Reflection =
         | Fable.Number(Decimal, _) -> jsInstanceof (libValue com ctx "Decimal" "default") expr
         | Fable.Number(JS.Replacements.BigIntegers _, _) -> jsTypeof "bigint" expr
         | Fable.Number _ -> jsTypeof "number" expr
-        | Fable.Regex -> jsInstanceof (Expression.identifier ("RegExp")) expr
+        | Fable.Regex -> jsInstanceof (Expression.identifier "RegExp") expr
         | Fable.LambdaType _
         | Fable.DelegateType _ -> jsTypeof "function" expr
         | Fable.Array _
@@ -505,7 +502,7 @@ module Reflection =
                 | MaybeCasted(ExprType(Fable.DeclaredType(ent2, _))) when
                     com.GetEntity(ent2) |> FSharp2Fable.Util.hasInterface Types.idisposable
                     ->
-                    Expression.booleanLiteral (true)
+                    Expression.booleanLiteral true
                 | _ ->
                     [ com.TransformAsExpr(ctx, expr) ]
                     |> libCall com ctx range "Util" "isDisposable" []
@@ -598,7 +595,7 @@ module Annotation =
     let getGenericTypeAnnotation com ctx name genArgs =
         let typeParamInst = makeTypeParamInstantiation com ctx genArgs
 
-        TypeAnnotation.aliasTypeAnnotation (Identifier.identifier (name), typeArguments = typeParamInst)
+        TypeAnnotation.aliasTypeAnnotation (Identifier.identifier name, typeArguments = typeParamInst)
 
     let makeTypeAnnotation com ctx typ : TypeAnnotation =
         match typ with
@@ -666,21 +663,21 @@ module Annotation =
         | annotation -> annotation, [||]
 
     let makeAliasTypeAnnotation _com _ctx name =
-        TypeAnnotation.aliasTypeAnnotation (Identifier.identifier (name))
+        TypeAnnotation.aliasTypeAnnotation (Identifier.identifier name)
 
     let makeGenericTypeAnnotation com ctx genArgs id =
         let typeParamInst = makeTypeParamInstantiation com ctx genArgs
         TypeAnnotation.aliasTypeAnnotation (id, typeArguments = typeParamInst)
 
     let makeNativeTypeAnnotation com ctx genArgs typeName =
-        Identifier.identifier (typeName) |> makeGenericTypeAnnotation com ctx genArgs
+        Identifier.identifier typeName |> makeGenericTypeAnnotation com ctx genArgs
 
     let makeFableLibImportTypeId (com: IBabelCompiler) ctx moduleName typeName =
         let expr = com.GetImportExpr(ctx, typeName, getLibPath com moduleName, None)
 
         match expr with
         | Expression.Identifier(id) -> id
-        | _ -> Identifier.identifier (typeName)
+        | _ -> Identifier.identifier typeName
 
     let makeFableLibImportTypeAnnotation com ctx genArgs moduleName typeName =
         let id = makeFableLibImportTypeId com ctx moduleName typeName
@@ -761,7 +758,7 @@ module Annotation =
             | _ -> argTypes
             |> List.mapi (fun i argType ->
                 FunctionTypeParam.functionTypeParam (
-                    Identifier.identifier ($"arg{i}"),
+                    Identifier.identifier $"arg{i}",
                     makeTypeAnnotation com ctx argType
                 )
             )
@@ -821,7 +818,7 @@ module Annotation =
     let makeStringEnumTypeAnnotation (ent: Fable.Entity) (attArgs: obj list) =
         let rule =
             match List.tryHead attArgs with
-            | Some(:? int as rule) -> enum<Core.CaseRules> (rule)
+            | Some(:? int as rule) -> enum<Core.CaseRules> rule
             | _ -> Core.CaseRules.LowerFirst
 
         ent.UnionCases
@@ -848,11 +845,11 @@ module Annotation =
         | [ uci ] -> transformSingleFieldType uci
         | ucis -> ucis |> List.mapToArray transformSingleFieldType |> UnionTypeAnnotation
 
-    let makeTypeScriptTaggedUnionTypeAnnotation com ctx genArgs (ent: Fable.Entity) (attArgs: obj list) =
+    let makeTypeScriptTaggedUnionTypeAnnotation com ctx _genArgs (ent: Fable.Entity) (attArgs: obj list) =
         let tag, rule =
             match attArgs with
-            | (:? string as tag) :: (:? int as rule) :: _ -> tag, enum<Core.CaseRules> (rule)
-            | (:? string as tag) :: _ -> tag, Core.CaseRules.LowerFirst
+            | :? string as tag :: (:? int as rule) :: _ -> tag, enum<Core.CaseRules> rule
+            | :? string as tag :: _ -> tag, Core.CaseRules.LowerFirst
             | _ -> "kind", Core.CaseRules.LowerFirst
 
         ent.UnionCases
@@ -1146,14 +1143,14 @@ module Util =
 
     let ofInt i = Expression.numericLiteral (float i)
 
-    let ofString s = Expression.stringLiteral (s)
+    let ofString s = Expression.stringLiteral s
 
     let memberFromNameComputeStrings computeStrings (memberName: string) : Expression * bool =
         match memberName with
-        | "ToString" -> Expression.identifier ("toString"), false
+        | "ToString" -> Expression.identifier "toString", false
         | n when n.StartsWith("Symbol.", StringComparison.Ordinal) ->
-            Expression.memberExpression (Expression.identifier ("Symbol"), Expression.identifier (n[7..]), false), true
-        | n when Naming.hasIdentForbiddenChars Naming.isJsIdentChar n -> Expression.stringLiteral (n), computeStrings
+            Expression.memberExpression (Expression.identifier "Symbol", Expression.identifier (n[7..]), false), true
+        | n when Naming.hasIdentForbiddenChars Naming.isJsIdentChar n -> Expression.stringLiteral n, computeStrings
         | n -> Expression.identifier (n |> sanitizeMemberName), false
 
     let memberFromName (memberName: string) : Expression * bool =
@@ -1194,13 +1191,13 @@ module Util =
         match t with
         | JS.Replacements.TypedArrayCompatible com kind jsName ->
             let args = [| makeArray com ctx args |]
-            Expression.newExpression (Expression.identifier (jsName), args)
+            Expression.newExpression (Expression.identifier jsName, args)
         | _ -> makeArray com ctx args
 
     let getArrayCons com t kind =
         match t with
         | JS.Replacements.TypedArrayCompatible com kind name -> Expression.identifier name
-        | _ -> Expression.identifier ("Array")
+        | _ -> Expression.identifier "Array"
 
     let makeArrayAllocated (com: IBabelCompiler) ctx typ kind (size: Fable.Expr) =
         let cons = getArrayCons com typ kind
@@ -1217,7 +1214,7 @@ module Util =
 
     let makeStringArray strings =
         strings
-        |> List.mapToArray (fun x -> Expression.stringLiteral (x))
+        |> List.mapToArray (fun x -> Expression.stringLiteral x)
         |> Expression.arrayExpression
 
     let makeJsObject pairs =
@@ -1326,7 +1323,7 @@ module Util =
         =
         let funcName, args, body =
             match kind, args with
-            | Attached(isStatic = false), (thisArg :: args) ->
+            | Attached(isStatic = false), thisArg :: args ->
                 let body =
                     // TODO: If ident is not captured maybe we can just replace it with "this"
                     if isIdentUsed thisArg.Name body then
@@ -1458,24 +1455,24 @@ module Util =
 
     let getUnionExprTag (com: IBabelCompiler) ctx r (fableExpr: Fable.Expr) =
         let expr = com.TransformAsExpr(ctx, fableExpr)
-        getExpr r expr (Expression.stringLiteral ("tag"))
+        getExpr r expr (Expression.stringLiteral "tag")
 
     /// Wrap int expressions with `| 0` to help optimization of JS VMs
     let wrapIntExpression typ (e: Expression) =
         match e, typ with
-        | Literal(NumericLiteral(_)), _ -> e
+        | Literal(NumericLiteral _), _ -> e
         // TODO: Unsigned ints seem to cause problems, should we check only Int32 here?
         | _, Fable.Number((Int8 | Int16 | Int32), _) ->
-            Expression.binaryExpression (BinaryOrBitwise, e, Expression.numericLiteral (0.))
+            Expression.binaryExpression (BinaryOrBitwise, e, Expression.numericLiteral 0.)
         | _ -> e
 
     let wrapExprInBlockWithReturn e =
-        BlockStatement([| Statement.returnStatement (e) |])
+        BlockStatement([| Statement.returnStatement e |])
 
-    let makeArrowFunctionExpression _name (args, (body: BlockStatement), returnType, typeParamDecl) : Expression =
+    let makeArrowFunctionExpression _name (args, body: BlockStatement, returnType, typeParamDecl) : Expression =
         Expression.arrowFunctionExpression (args, body, ?returnType = returnType, ?typeParameters = typeParamDecl)
 
-    let makeFunctionExpression name (args, (body: Expression), returnType, typeParamDecl) : Expression =
+    let makeFunctionExpression name (args, body: Expression, returnType, typeParamDecl) : Expression =
         let id = name |> Option.map Identifier.identifier
         let body = wrapExprInBlockWithReturn body
 
@@ -1514,16 +1511,16 @@ module Util =
 
         [|
             // First declare temp variables
-            for (KeyValue(argId, tempVar)) in tempVars do
-                yield Statement.variableDeclaration (Const, tempVar, init = Expression.identifier (argId))
+            for KeyValue(argId, tempVar) in tempVars do
+                yield Statement.variableDeclaration (Const, tempVar, init = Expression.identifier argId)
             // Then assign argument expressions to the original argument identifiers
             // See https://github.com/fable-compiler/Fable/issues/1368#issuecomment-434142713
-            for (argId, arg) in zippedArgs do
+            for argId, arg in zippedArgs do
                 let arg = FableTransforms.replaceValues tempVarReplacements arg
                 let arg = com.TransformAsExpr(ctx, arg)
 
-                yield assign None (Expression.identifier (argId)) arg |> ExpressionStatement
-            yield Statement.continueStatement (Identifier.identifier (tc.Label), ?loc = range)
+                yield assign None (Expression.identifier argId) arg |> ExpressionStatement
+            yield Statement.continueStatement (Identifier.identifier tc.Label, ?loc = range)
         |]
 
     let transformImport (com: IBabelCompiler) ctx r (selector: string) (path: string) =
@@ -1589,7 +1586,7 @@ module Util =
                 let typeParamInst =
                     makeTypeParamInstantiationIfTypeScript com ctx genArgs
                     |> Option.map (fun typeParams ->
-                        Array.append typeParams [| LiteralTypeAnnotation(Literal.numericLiteral (tag)) |]
+                        Array.append typeParams [| LiteralTypeAnnotation(Literal.numericLiteral tag) |]
                     )
 
                 Expression.newExpression (
@@ -1732,7 +1729,7 @@ module Util =
 
     let enumerableThisToIterator com ctx =
         let enumerator =
-            libCall com ctx None "Util" "getEnumerator" [] [ Expression.identifier ("this") ]
+            libCall com ctx None "Util" "getEnumerator" [] [ Expression.identifier "this" ]
 
         BlockStatement(
             [|
@@ -1798,7 +1795,7 @@ module Util =
         let members =
             members
             |> List.collect (fun (memb, info) ->
-                let ent = info.DeclaringEntity |> Option.bind (fun e -> com.TryGetEntity(e))
+                let ent = info.DeclaringEntity |> Option.bind com.TryGetEntity
 
                 let prop, isComputed = memberFromName memb.Name
 
@@ -1960,7 +1957,7 @@ module Util =
             if hasSpread then
                 match List.rev args with
                 | [] -> []
-                | (Replacements.Util.ArrayOrListLiteral(spreadArgs, _)) :: rest ->
+                | Replacements.Util.ArrayOrListLiteral(spreadArgs, _) :: rest ->
                     let rest = List.rev rest |> List.map (fun e -> com.TransformAsExpr(ctx, e))
 
                     rest @ (List.map (fun e -> com.TransformAsExpr(ctx, e)) spreadArgs)
@@ -2033,7 +2030,7 @@ module Util =
         | Fable.Tags.Contains "topDirectiveProloge" ->
             com.SaveTopDirectivePrologue(info.Macro)
             // Return empty sequence expression so it can be erased at print time
-            Expression.sequenceExpression ([||])
+            Expression.sequenceExpression [||]
         | _ ->
             let macro = stripImports com ctx range info.Macro
             let info = info.CallInfo
@@ -2208,7 +2205,7 @@ but thanks to the optimisation done below we get
 
         transformJsxEl com ctx callee props
 
-    let optimizeCall (com: IBabelCompiler) ctx range typ callee (callInfo: Fable.CallInfo) =
+    let optimizeCall (com: IBabelCompiler) ctx range typ _callee (callInfo: Fable.CallInfo) =
         // Try to optimize some patterns after FableTransforms
         match callInfo.Tags, callInfo.Args with
         | Fable.Tags.Contains "downcast", [ e ] ->
@@ -2256,7 +2253,7 @@ but thanks to the optimisation done below we get
             match args with
             | StringConst template :: _ ->
                 let template = stripImports com ctx range template
-                Expression.jsxTemplate (template) |> Some
+                Expression.jsxTemplate template |> Some
             | MaybeCasted(Fable.Value(Fable.StringTemplate(_, parts, values), _)) :: _ ->
                 let parts =
                     match parts with
@@ -2434,7 +2431,7 @@ but thanks to the optimisation done below we get
                 | [||] -> Statement.ifStatement (jsGuardExpr, thenStmnt, ?loc = r)
                 | [| elseStmnt |] -> Statement.ifStatement (jsGuardExpr, thenStmnt, elseStmnt, ?loc = r)
                 | statements ->
-                    Statement.ifStatement (jsGuardExpr, thenStmnt, Statement.blockStatement (statements), ?loc = r)
+                    Statement.ifStatement (jsGuardExpr, thenStmnt, Statement.blockStatement statements, ?loc = r)
                 |> Array.singleton
 
     let transformGet (com: IBabelCompiler) ctx range typ fableExpr kind =
@@ -2493,14 +2490,14 @@ but thanks to the optimisation done below we get
                         if List.isSingle ent.UnionCases then
                             expr
                         else
-                            match Lib.tryJsConstructorFor ActualConsRef com ctx ent with
+                            match tryJsConstructorFor ActualConsRef com ctx ent with
                             | Some(Expression.Identifier(id)) ->
                                 let typeParams = makeTypeParamInstantiation com ctx info.GenericArgs
 
                                 let typeParams =
                                     Array.append
                                         typeParams
-                                        [| LiteralTypeAnnotation(Literal.numericLiteral (info.CaseIndex)) |]
+                                        [| LiteralTypeAnnotation(Literal.numericLiteral info.CaseIndex) |]
 
                                 AsExpression(expr, AliasTypeAnnotation(id, typeParams))
                             | _ -> expr
@@ -2508,7 +2505,7 @@ but thanks to the optimisation done below we get
                     expr
 
             let expr =
-                getExpr range (getExpr None expr (Expression.stringLiteral ("fields"))) (ofInt info.FieldIndex)
+                getExpr range (getExpr None expr (Expression.stringLiteral "fields")) (ofInt info.FieldIndex)
 
             if com.IsTypeScript then
                 let ta = FableTransforms.uncurryType typ |> makeTypeAnnotation com ctx
@@ -2629,7 +2626,7 @@ but thanks to the optimisation done below we get
                     // In TypeScript, we need to cast the union case tag to a number
                     // otherwise TypeScript compiler is too smart and test against the literal value (0, 1, 2, etc.)
                     let number = Fable.Number(Int32, Fable.NumberInfo.Empty)
-                    (AsExpression(unionExprTag, makeTypeAnnotation com ctx number))
+                    AsExpression(unionExprTag, makeTypeAnnotation com ctx number)
                 else
                     unionExprTag
 
@@ -2670,7 +2667,7 @@ but thanks to the optimisation done below we get
 
                     guards
                     @ [
-                        SwitchCase.switchCase (transformGuard lastGuard, [| Statement.blockStatement (caseBody) |])
+                        SwitchCase.switchCase (transformGuard lastGuard, [| Statement.blockStatement caseBody |])
                     ]
             )
 
@@ -2684,11 +2681,7 @@ but thanks to the optimisation done below we get
         | [||], Some defaultCase when not (canHaveSideEffects com evalExpr) -> defaultCase
         | cases, Some defaultCase ->
             let cases =
-                Array.append
-                    cases
-                    [|
-                        SwitchCase.switchCase (body = [| Statement.blockStatement (defaultCase) |])
-                    |]
+                Array.append cases [| SwitchCase.switchCase (body = [| Statement.blockStatement defaultCase |]) |]
 
             [| Statement.switchStatement (switchGuard, cases) |]
         | cases, None -> [| Statement.switchStatement (switchGuard, cases) |]
@@ -2750,7 +2743,7 @@ but thanks to the optimisation done below we get
                     assign None (identAsExpr id) value |> ExpressionStatement
                 )
 
-            if System.String.IsNullOrEmpty targetId.Name then
+            if String.IsNullOrEmpty targetId.Name then
                 assignments
             else
                 let targetAssignment =
@@ -3057,7 +3050,7 @@ but thanks to the optimisation done below we get
             if ctx.HoistVars [ ident ] then
                 let assignment = transformBindingAsExpr com ctx ident value
 
-                Expression.sequenceExpression ([| assignment; com.TransformAsExpr(ctx, body) |])
+                Expression.sequenceExpression [| assignment; com.TransformAsExpr(ctx, body) |]
             else
                 iife com ctx expr
 
@@ -3294,7 +3287,7 @@ but thanks to the optimisation done below we get
 
                 let varDecls =
                     List.zip args tc.Args
-                    |> List.map (fun (id, tcArg) -> id, Some(Expression.identifier (tcArg)))
+                    |> List.map (fun (id, tcArg) -> id, Some(Expression.identifier tcArg))
                     |> multiVarDeclaration com ctx Const
 
                 let body = Array.append [| varDecls |] body.Body
@@ -3303,8 +3296,8 @@ but thanks to the optimisation done below we get
 
                 let body =
                     Statement.labeledStatement (
-                        Identifier.identifier (tc.Label),
-                        Statement.whileStatement (Expression.booleanLiteral (true), body)
+                        Identifier.identifier tc.Label,
+                        Statement.whileStatement (Expression.booleanLiteral true, body)
                     )
                     |> Array.singleton
                     |> BlockStatement
@@ -3340,7 +3333,7 @@ but thanks to the optimisation done below we get
         | ClassExpression(body, _id, superClass, implements, typeParameters, _loc) ->
             Declaration.classDeclaration (
                 body,
-                id = Identifier.identifier (info.Name),
+                id = Identifier.identifier info.Name,
                 ?superClass = superClass,
                 typeParameters = typeParameters,
                 implements = implements
@@ -3349,7 +3342,7 @@ but thanks to the optimisation done below we get
             Declaration.functionDeclaration (
                 parameters,
                 body,
-                id = Identifier.identifier (info.Name),
+                id = Identifier.identifier info.Name,
                 ?returnType = returnType,
                 typeParameters = typeParameters,
                 ?doc = info.JsDoc
@@ -3479,7 +3472,7 @@ but thanks to the optimisation done below we get
                 None
 
         let genArgs =
-            Array.init (ent.GenericParameters.Length) (fun i -> "gen" + string<int> i |> makeIdent)
+            Array.init ent.GenericParameters.Length (fun i -> "gen" + string<int> i |> makeIdent)
 
         let generics = genArgs |> Array.map identAsExpr
         let body = transformReflectionInfo com ctx None ent generics
@@ -3568,7 +3561,7 @@ but thanks to the optimisation done below we get
             statements
             |> Array.exists (
                 function
-                | Declaration(Declaration.VariableDeclaration(_)) -> true
+                | Declaration(Declaration.VariableDeclaration _) -> true
                 | _ -> false
             )
 
@@ -3579,7 +3572,7 @@ but thanks to the optimisation done below we get
                 |> PrivateModuleDeclaration
             ]
         else
-            statements |> Array.mapToList (fun x -> PrivateModuleDeclaration(x))
+            statements |> Array.mapToList PrivateModuleDeclaration
 
     let transformAttachedProperty
         (com: IBabelCompiler)
@@ -3644,7 +3637,7 @@ but thanks to the optimisation done below we get
                     match returnType with
                     | Some(AliasTypeAnnotation(_, typeArguments)) ->
                         TypeAnnotation.aliasTypeAnnotation (
-                            Identifier.identifier ("Iterator"),
+                            Identifier.identifier "Iterator",
                             typeArguments = typeArguments
                         )
                         |> Some
@@ -3677,15 +3670,15 @@ but thanks to the optimisation done below we get
                 | _ when not com.IsTypeScript -> [||]
                 | [ singleCase ] ->
                     [|
-                        LiteralTypeAnnotation(Literal.numericLiteral (0))
-                        LiteralTypeAnnotation(Literal.stringLiteral (singleCase.Name))
+                        LiteralTypeAnnotation(Literal.numericLiteral 0)
+                        LiteralTypeAnnotation(Literal.stringLiteral singleCase.Name)
                     |]
                 | _ ->
                     [|
                         tagArgTa
                         IndexedTypeAnnotation(
                             IndexedTypeAnnotation(union_cases_alias, tagArgTa),
-                            LiteralTypeAnnotation(Literal.numericLiteral (0))
+                            LiteralTypeAnnotation(Literal.numericLiteral 0)
                         )
                     |]
 
@@ -3702,7 +3695,7 @@ but thanks to the optimisation done below we get
                 |> Array.singleton
                 |> BlockStatement
 
-            ClassMember.classMethod (ClassFunction(Expression.identifier ("cases"), false), [||], body)
+            ClassMember.classMethod (ClassFunction(Expression.identifier "cases", false), [||], body)
 
         // Don't emit helpers for single-case unions but make constructor with typed arguments
         match ent.UnionCases with
@@ -3724,14 +3717,14 @@ but thanks to the optimisation done below we get
 
             let fieldsExpr =
                 args
-                |> Array.map (fun a -> Expression.identifier (a.Name))
+                |> Array.map (fun a -> Expression.identifier a.Name)
                 |> Expression.arrayExpression
 
             let consBody =
                 BlockStatement
                     [|
                         callSuperAsStatement []
-                        assign None (get None thisExpr "tag") (Expression.numericLiteral (0.))
+                        assign None (get None thisExpr "tag") (Expression.numericLiteral 0.)
                         |> ExpressionStatement
                         assign None (get None thisExpr "fields") fieldsExpr |> ExpressionStatement
                     |]
@@ -3748,7 +3741,7 @@ but thanks to the optimisation done below we get
                     if com.IsTypeScript then
                         ClassMember.classProperty (
                             Expression.identifier "tag",
-                            typeAnnotation = LiteralTypeAnnotation(Literal.numericLiteral (0)),
+                            typeAnnotation = LiteralTypeAnnotation(Literal.numericLiteral 0),
                             accessModifier = Readonly
                         )
 
@@ -3768,7 +3761,7 @@ but thanks to the optimisation done below we get
                 ent.UnionCases
                 |> List.mapiToArray (fun i uci ->
                     let typeParams =
-                        Array.append entParamsInst [| LiteralTypeAnnotation(Literal.numericLiteral (i)) |]
+                        Array.append entParamsInst [| LiteralTypeAnnotation(Literal.numericLiteral i) |]
 
                     let case_ta = TypeAnnotation.aliasTypeAnnotation (union_cons, typeParams)
 
@@ -3779,8 +3772,8 @@ but thanks to the optimisation done below we get
 
                     case_ta,
                     AbstractMember.abstractProperty (
-                        Expression.numericLiteral (i),
-                        TupleTypeAnnotation [| LiteralTypeAnnotation(Literal.stringLiteral (uci.Name)); fields_ta |]
+                        Expression.numericLiteral i,
+                        TupleTypeAnnotation [| LiteralTypeAnnotation(Literal.stringLiteral uci.Name); fields_ta |]
                     )
                 )
                 |> Array.unzip
@@ -3788,7 +3781,7 @@ but thanks to the optimisation done below we get
             let fieldsArgTa =
                 IndexedTypeAnnotation(
                     IndexedTypeAnnotation(union_cases_alias, tagArgTa),
-                    LiteralTypeAnnotation(Literal.numericLiteral (1))
+                    LiteralTypeAnnotation(Literal.numericLiteral 1)
                 )
 
             let consArgs =
@@ -3821,7 +3814,7 @@ but thanks to the optimisation done below we get
                 yield!
                     ent.UnionCases
                     |> List.mapi (fun i case ->
-                        let tag = Literal.numericLiteral (i)
+                        let tag = Literal.numericLiteral i
 
                         let passedArgs =
                             case.UnionCaseFields
@@ -3876,7 +3869,7 @@ but thanks to the optimisation done below we get
 
         // Multiple cases, no-TypeScript
         | _ ->
-            let args = [| Parameter.parameter ("tag"); Parameter.parameter ("fields") |]
+            let args = [| Parameter.parameter "tag"; Parameter.parameter "fields" |]
 
             let body =
                 BlockStatement
@@ -3886,7 +3879,7 @@ but thanks to the optimisation done below we get
                             [ "tag"; "fields" ]
                             |> List.map (fun name ->
                                 let left = get None thisExpr name
-                                let right = Expression.identifier (name)
+                                let right = Expression.identifier name
                                 assign None left right |> ExpressionStatement
                             )
                     |]
@@ -4000,7 +3993,7 @@ but thanks to the optimisation done below we get
                 "Unable to find a valid constructor for generating interface via ParamObject, please make sure the constructor has at least one parameter."
 
             []
-        | members :: [] ->
+        | [ members ] ->
             Declaration.interfaceDeclaration (
                 Identifier.identifier decl.Name,
                 members,
@@ -4030,7 +4023,7 @@ but thanks to the optimisation done below we get
         (cons: Fable.MemberDecl)
         =
         let consInfo = com.GetMember(cons.MemberRef)
-        let classIdent = Expression.identifier (classDecl.Name)
+        let classIdent = Expression.identifier classDecl.Name
 
         let consArgs, consBody, returnType, _typeParamDecl =
             getMemberArgsAndBody com ctx ClassConstructor (Some classEnt) consInfo cons.Args cons.Body
@@ -4048,7 +4041,7 @@ but thanks to the optimisation done below we get
                 returnType, None
 
         let exposedCons =
-            let argExprs = consArgs |> Array.map (fun p -> Expression.identifier (p.Name))
+            let argExprs = consArgs |> Array.map (fun p -> Expression.identifier p.Name)
 
             let exposedConsBody = Expression.newExpression (classIdent, argExprs)
 
@@ -4356,7 +4349,7 @@ but thanks to the optimisation done below we get
                     decls
                 else
                     decls
-                    @ [ ExportDefaultDeclaration(Choice2Of2(Expression.identifier (decl.Name))) ]
+                    @ [ ExportDefaultDeclaration(Choice2Of2(Expression.identifier decl.Name)) ]
 
         | Fable.ClassDeclaration decl ->
             match com.GetEntity(decl.Entity) with
@@ -4387,7 +4380,7 @@ but thanks to the optimisation done below we get
                             withCurrentScope ctx memb.UsedNames
                             <| fun ctx ->
                                 memb.ImplementedSignatureRef
-                                |> Option.bind (com.TryGetMember)
+                                |> Option.bind com.TryGetMember
                                 |> Option.orElseWith (fun () -> com.TryGetMember(memb.MemberRef))
                                 |> function
                                     | None -> [||]
@@ -4416,12 +4409,12 @@ but thanks to the optimisation done below we get
             let specifier =
                 import.LocalIdent
                 |> Option.map (fun localId ->
-                    let localId = Identifier.identifier (localId)
+                    let localId = Identifier.identifier localId
 
                     match import.Selector with
                     | "*" -> ImportNamespaceSpecifier(localId)
                     | "default" -> ImportDefaultSpecifier(localId)
-                    | memb -> ImportMemberSpecifier(localId, Identifier.identifier (memb))
+                    | memb -> ImportMemberSpecifier(localId, Identifier.identifier memb)
                 )
 
             import.Path, specifier
@@ -4432,8 +4425,8 @@ but thanks to the optimisation done below we get
                 (([], [], []), Seq.choose snd specifiers)
                 ||> Seq.fold (fun (mems, defs, alls) x ->
                     match x with
-                    | ImportNamespaceSpecifier(_) -> mems, defs, x :: alls
-                    | ImportDefaultSpecifier(_) -> mems, x :: defs, alls
+                    | ImportNamespaceSpecifier _ -> mems, defs, x :: alls
+                    | ImportDefaultSpecifier _ -> mems, x :: defs, alls
                     | _ -> x :: mems, defs, alls
                 )
             // We used to have trouble when mixing member, default and namespace imports,
@@ -4443,15 +4436,14 @@ but thanks to the optimisation done below we get
                 function
                 | [] -> None
                 | specifiers ->
-                    ImportDeclaration(List.toArray specifiers, StringLiteral.stringLiteral (path))
+                    ImportDeclaration(List.toArray specifiers, StringLiteral.stringLiteral path)
                     |> Some
             )
             |> function
                 | [] ->
                     // If there are no specifiers, this is just an import for side effects,
                     // put it after the other ones to match standard JS practices, see #2228
-                    ImportDeclaration([||], StringLiteral.stringLiteral (path))
-                    |> statefulImports.Add
+                    ImportDeclaration([||], StringLiteral.stringLiteral path) |> statefulImports.Add
 
                     []
                 | decls -> decls
@@ -4464,7 +4456,7 @@ but thanks to the optimisation done below we get
         |> Seq.toList
 
     let getIdentForImport (com: IBabelCompiler) (ctx: Context) noMangle (path: string) (selector: string) =
-        if System.String.IsNullOrEmpty selector then
+        if String.IsNullOrEmpty selector then
             selector, None
         else
             let selector, alias =
@@ -4520,7 +4512,7 @@ module Compiler =
                 match imports.TryGetValue(cachedName) with
                 | true, i ->
                     match i.LocalIdent with
-                    | Some localIdent -> Expression.identifier (localIdent)
+                    | Some localIdent -> Expression.identifier localIdent
                     | None -> Expression.nullLiteral ()
                 | false, _ ->
                     let selector, localId = getIdentForImport com ctx noMangle path selector
@@ -4538,7 +4530,7 @@ module Compiler =
                     imports.Add(cachedName, i)
 
                     match localId with
-                    | Some localId -> Expression.identifier (localId)
+                    | Some localId -> Expression.identifier localId
                     | None -> Expression.nullLiteral ()
 
             member _.GetAllImports() = imports.Values :> _

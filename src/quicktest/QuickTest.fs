@@ -12,7 +12,7 @@ open Fable.Core.JsInterop
 open Fable.Core.Testing
 open System.Globalization
 
-let log (o: obj) = JS.console.log (o)
+let log (o: obj) = JS.console.log o
 // printfn "%A" o
 
 let equal expected actual =

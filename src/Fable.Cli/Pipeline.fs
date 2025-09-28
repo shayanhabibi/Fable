@@ -68,7 +68,7 @@ type Stream =
             elif not (IO.File.Exists(targetPath)) then
                 return! Stream.WriteToFile(memoryStream, targetPath)
             else
-                let fileInfo = new IO.FileInfo(targetPath)
+                let fileInfo = IO.FileInfo(targetPath)
 
                 if fileInfo.Length <> memoryStream.Length then
                     return! Stream.WriteToFile(memoryStream, targetPath)
@@ -97,7 +97,7 @@ module Js =
         let stream = new IO.StreamWriter(memoryStream)
 
         let mapGenerator =
-            lazy (SourceMapSharp.SourceMapGenerator(?sourceRoot = cliArgs.SourceMapsRoot))
+            lazy SourceMapSharp.SourceMapGenerator(?sourceRoot = cliArgs.SourceMapsRoot)
 
         member _.WriteToFileIfChanged() =
             async {

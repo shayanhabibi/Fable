@@ -208,7 +208,7 @@ let tests =
     testCase "Decision targets can be found" <| fun () ->
         let mutable test = fun x ->
             match x with
-            | (4 | 5) as r -> r
+            | 4 | 5 as r -> r
             | _ -> 1
         test 2 |> equal 1
 
@@ -219,7 +219,7 @@ let tests =
             | 1 -> 1
             | 2 | 3 | 4 | 5 ->
                 match x with
-                | (4 | 5) as r -> r
+                | 4 | 5 as r -> r
                 | _ -> 1
             | _ -> 0
         test 2 |> equal 1
@@ -258,9 +258,9 @@ let tests =
         Enum.Parse(t, "Foo") |> equal (box MyEnum.Foo)
         Enum.Parse(t, "Bar") |> equal (box MyEnum.Bar)
         Enum.Parse(t, "8") |> equal (box MyEnum.Baz)
-        Enum.Parse<MyEnum>("Foo") |> equal (MyEnum.Foo)
-        Enum.Parse<MyEnum>("Bar") |> equal (MyEnum.Bar)
-        Enum.Parse<MyEnum>("8") |> equal (MyEnum.Baz)
+        Enum.Parse<MyEnum>("Foo") |> equal MyEnum.Foo
+        Enum.Parse<MyEnum>("Bar") |> equal MyEnum.Bar
+        Enum.Parse<MyEnum>("8") |> equal MyEnum.Baz
 
     testCase "Enum.TryParse works" <| fun () ->
         Enum.TryParse<MyEnum>("Foo") |> equal (true, MyEnum.Foo)

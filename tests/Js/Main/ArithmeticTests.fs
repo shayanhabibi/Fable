@@ -13,7 +13,7 @@ let checkTo3dp (expected: float) actual =
 
 let positiveInfinity = Double.PositiveInfinity
 let negativeInfinity = Double.NegativeInfinity
-let isNaN = fun x -> Double.IsNaN(x)
+let isNaN = Double.IsNaN
 
 let equals (x:'a) (y:'a) = x = y
 let compareTo (x:'a) (y:'a) = compare x y

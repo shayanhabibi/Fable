@@ -32,7 +32,7 @@ module LanguagePrimitives =
         FSharp.Collections.HashIdentity.Structural<'T>
 
 module Operators =
-    let Failure message = new System.Exception(message)
+    let Failure message = System.Exception(message)
 
     [<CompiledName("FailurePattern")>]
     let (|Failure|_|) (exn: exn) = Some exn.Message
@@ -120,7 +120,7 @@ module Operators =
     [<CompiledName("NullArgCheck")>]
     let nullArgCheck (argumentName: string) (value: 'T | null when 'T: not null and 'T: not struct) =
         match value with
-        | null -> raise (new System.ArgumentNullException($"Value cannot be null. (Parameter '{argumentName}')"))
+        | null -> raise (System.ArgumentNullException($"Value cannot be null. (Parameter '{argumentName}')"))
         | _ -> (# "" value : 'T #)
 
 module ExtraTopLevelOperators =

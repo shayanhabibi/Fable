@@ -10,7 +10,7 @@ let React: obj = importAll "react"
 
 [<ReactComponent>]
 let Counter(init: int) =
-    let (count, setCount) = Feliz.React.useState(init)
+    let count, setCount = Feliz.React.useState(init)
     Html.div [
         prop.style [ style.padding 10 ]
         prop.children [
@@ -31,7 +31,7 @@ let Counter(init: int) =
 
 [<JSX.Component>]
 let CounterJSX(init: int) =
-    let (count, setCount) = Feliz.React.useState(init)
+    let count, setCount = Feliz.React.useState(init)
     JSX.html
         $"""
         <div style={createObj ["padding" ==> 10]}>

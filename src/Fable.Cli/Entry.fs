@@ -218,7 +218,7 @@ type Runner =
             language: Language,
             rootDir: string,
             runProc: RunProcess option,
-            verbosity: Fable.Verbosity,
+            verbosity: Verbosity,
             ?fsprojPath: string,
             ?watch,
             ?precompile
@@ -339,7 +339,7 @@ type Runner =
                     typedArrays = typedArrays,
                     fileExtension = fileExt,
                     define = define,
-                    debugMode = (configuration.IsDebug),
+                    debugMode = configuration.IsDebug,
                     optimizeFSharpAst = args.FlagEnabled "--optimize",
                     noReflection = args.FlagEnabled "--noReflection",
                     verbosity = verbosity
@@ -367,7 +367,7 @@ type Runner =
                         args.Values "--replace"
                         |> List.map (fun v ->
                             let v = v.Split(':')
-                            v.[0], normalizeAbsolutePath v.[1]
+                            v[0], normalizeAbsolutePath v[1]
                         )
                         |> Map
                     RunProcess = runProc
@@ -449,7 +449,7 @@ let clean (args: CliArgs) language rootDir =
     recClean cleanDir
 
     if fileCount = 0 && not fableModulesDeleted then
-        Log.always ("No files have been deleted. If Fable output is in another directory, pass it as argument.")
+        Log.always "No files have been deleted. If Fable output is in another directory, pass it as argument."
     else
         Log.always ("Clean completed! Files deleted: " + string<int> fileCount)
 
@@ -473,11 +473,11 @@ let private logPrelude commands language =
             | "" -> ""
             | status -> $" (status: {status})"
 
-        Log.always ($"Fable {Literals.VERSION}: F# to {language} compiler{status}")
+        Log.always $"Fable {Literals.VERSION}: F# to {language} compiler{status}"
 
         match getLibPkgVersion language with
         | Some(repository, pkgName, version) ->
-            Log.always ($"Minimum {pkgName} version (when installed from {repository}): {version}")
+            Log.always $"Minimum {pkgName} version (when installed from {repository}): {version}"
         | None -> ()
 
         Log.always ("\nThanks to the contributor! @" + Contributors.getRandom ())

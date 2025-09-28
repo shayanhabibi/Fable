@@ -30,7 +30,7 @@ let updateLibraryVersionInFableTransforms
         Regex.Replace(
             fileContent,
             $@"^(?'indentation'\s*)let VERSION = ""(?'version'.*?)""",
-            (fun (m: Match) -> m.Groups.["indentation"].Value + $"let VERSION = \"{compilerVersion}\""),
+            (fun (m: Match) -> m.Groups["indentation"].Value + $"let VERSION = \"{compilerVersion}\""),
             RegexOptions.Multiline
         )
 
@@ -41,7 +41,7 @@ let updateLibraryVersionInFableTransforms
             Regex.Replace(
                 fileContent,
                 $@"^(?'indentation'\s*)let {prefix}_LIBRARY_VERSION = ""(?'version'.*?)""",
-                (fun (m: Match) -> m.Groups.["indentation"].Value + $"let {prefix}_LIBRARY_VERSION = \"{version}\""),
+                (fun (m: Match) -> m.Groups["indentation"].Value + $"let {prefix}_LIBRARY_VERSION = \"{version}\""),
                 RegexOptions.Multiline
             )
 

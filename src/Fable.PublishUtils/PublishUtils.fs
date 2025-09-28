@@ -103,10 +103,10 @@ module Platform =
                 InteropServices.RuntimeInformation.IsOSPlatform(InteropServices.OSPlatform.Windows)
 
             member _.GetEnvironmentVariable(varName) =
-                System.Environment.GetEnvironmentVariable(varName)
+                Environment.GetEnvironmentVariable(varName)
 
             member _.SetEnvironmentVariable(varName, value) =
-                System.Environment.SetEnvironmentVariable(varName, value)
+                Environment.SetEnvironmentVariable(varName, value)
         }
 
     let Json =
@@ -353,7 +353,7 @@ let (|Regex|_|) (pattern: string) (input: string) =
         let mutable groups = []
 
         for i = m.Groups.Count - 1 downto 0 do
-            groups <- m.Groups.[i].Value :: groups
+            groups <- m.Groups[i].Value :: groups
 
         Some groups
     else
@@ -444,7 +444,7 @@ module Publish =
         |> readFile
         |> Json.Parse
         |> Json.TryGetProperty "version"
-        |> Option.map (Json.GetString)
+        |> Option.map Json.GetString
         |> Option.defaultWith (fun _ -> failwith "Cannot parse version")
 
     let bumpNpmVersion projDir newVersion =
@@ -507,12 +507,8 @@ module Publish =
             readFile projFile
             |> replaceRegex
                 NUGET_VERSION
-                (fun m ->
-                    m.Groups.[1].Value
-                    + (splitPrerelease releaseVersion |> fst)
-                    + m.Groups.[3].Value
-                )
-            |> replaceRegex NUGET_PACKAGE_VERSION (fun m -> m.Groups.[1].Value + releaseVersion + m.Groups.[3].Value)
+                (fun m -> m.Groups[1].Value + (splitPrerelease releaseVersion |> fst) + m.Groups[3].Value)
+            |> replaceRegex NUGET_PACKAGE_VERSION (fun m -> m.Groups[1].Value + releaseVersion + m.Groups[3].Value)
             |> fun fsproj ->
                 if nugetInfo.ReleaseNotes.Length = 0 then
                     fsproj
@@ -521,9 +517,9 @@ module Publish =
                     |> replaceRegex
                         NUGET_PACKAGE_RELEASE_NOTES
                         (fun m ->
-                            m.Groups.[1].Value
+                            m.Groups[1].Value
                             + (String.concat "\n" nugetInfo.ReleaseNotes)
-                            + m.Groups.[3].Value
+                            + m.Groups[3].Value
                         )
             |> writeFile projFile
 
@@ -646,7 +642,7 @@ let getDotNetSDKVersionFromGlobalJson () : string =
     |> Json.Parse
     |> Json.TryGetProperty "sdk"
     |> Option.bind (Json.TryGetProperty "version")
-    |> Option.map (Json.GetString)
+    |> Option.map Json.GetString
     |> Option.defaultWith (fun _ -> failwith "Cannot parse version")
 
 let getNpmVersion (projDir: string) =

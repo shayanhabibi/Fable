@@ -299,7 +299,7 @@ let tests =
     testCase "Group values can be converted to int" <| fun _ -> // See #1753
         let m = Regex.Match("ABC123", @"([A-Z]+)(\d+)")
         let group = m.Groups.[2]
-        int (group.Value) |> equal 123
+        int group.Value |> equal 123
 
     // see #2359
     testCase "Regex.Replace with elevator works when regex has named capture group" <| fun _ ->

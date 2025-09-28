@@ -226,7 +226,7 @@ let tests =
 
     testCase "System.Array.ConvertAll works" <| fun () ->
         let xs = [| 1.; 2.; 3.; 4. |]
-        let ys = System.Array.ConvertAll(xs, System.Converter(fun x -> int x))
+        let ys = System.Array.ConvertAll(xs, System.Converter int)
         ys |> Seq.toList |> equal [1;2;3;4]
 
     testCase "Array.zeroCreate works" <| fun () ->
@@ -876,19 +876,19 @@ let tests =
 
     testCase "Array as IList indexer has same behaviour" <| fun () ->
         let xs = [|1.; 2.; 3.|]
-        let ys = xs :> _ System.Collections.Generic.IList
+        let ys = xs :> _ IList
         ys.[0] <- -3.
         ys.[0] + ys.[2]
         |> equal 0.
 
     testCase "Array as IList count has same behaviour" <| fun () ->
         let xs = [|1.; 2.; 3.|]
-        let ys = xs :> _ System.Collections.Generic.IList
+        let ys = xs :> _ IList
         ys.Count |> equal 3
 
     testCase "Array as IList Seq.length has same behaviour" <| fun () ->
         let xs = [|1.; 2.; 3.|]
-        let ys = xs :> _ System.Collections.Generic.IList
+        let ys = xs :> _ IList
         ys |> Seq.length |> equal 3
 
     testCase "Mapping with typed arrays doesn't coerce" <| fun () ->

@@ -39,14 +39,14 @@ let private tryCheckVersionLine (line: string) =
 
     // I don't know why, but empty lines are matched
     if m.Success then
-        let version = m.Groups.["version"].Value
+        let version = m.Groups["version"].Value
         // Skip Unreleased versions for KeepAChangelog format
         if version = "Unreleased" then
             None
         else
             let date =
-                if m.Groups.["date"].Success then
-                    Some m.Groups.["date"].Value
+                if m.Groups["date"].Success then
+                    Some m.Groups["date"].Value
                 else
                     None
 

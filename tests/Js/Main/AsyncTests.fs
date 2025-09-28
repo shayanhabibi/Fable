@@ -125,7 +125,7 @@ let tests =
         let result = ref ""
         let throw() : unit =
             raise(exn "Boo!")
-        let append(x) =
+        let append x =
             result := !result + x
         let innerAsync() =
             async {
@@ -378,7 +378,7 @@ let tests =
             let formatString = "Msg: {0} - {1}"
             let agent = MailboxProcessor<Message>.Start(fun inbox ->
                 let rec loop n = async {
-                    let! (message, replyChannel) = inbox.Receive()
+                    let! message, replyChannel = inbox.Receive()
                     do! Async.Sleep(100) // Delay a bit
                     replyChannel.Reply(String.Format(formatString, n, message))
                     if message <> "Bye" then do! loop (n + 1)

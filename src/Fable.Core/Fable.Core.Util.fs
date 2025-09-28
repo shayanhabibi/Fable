@@ -1,6 +1,6 @@
 namespace Fable.Core
 
-open System
+#nowarn 1182 // ignore unused variable warning
 
 [<AutoOpen>]
 module Util =

@@ -20,7 +20,7 @@ type Assemblies(getPlugin, fsharpAssemblies: FSharpAssembly list, addLog: Severi
     let entities = ConcurrentDictionary<string, Fable.Entity>()
 
     let plugins =
-        let plugins = Dictionary<Fable.EntityRef, System.Type>()
+        let plugins = Dictionary<Fable.EntityRef, Type>()
         let mutable hasSkippedAssembly = false
 
         for asm in fsharpAssemblies do
@@ -186,8 +186,8 @@ type Project
         |> Option.defaultWith (fun () ->
             { new PrecompiledInfo with
                 member _.DllPath = ""
-                member _.TryGetRootModule(_) = None
-                member _.TryGetInlineExpr(_) = None
+                member _.TryGetRootModule _ = None
+                member _.TryGetInlineExpr _ = None
             }
         )
 
@@ -198,7 +198,7 @@ type Project
             fsharpFiles: FSharpImplementationFileContents list,
             fsharpAssemblies: FSharpAssembly list,
             addLog: Severity -> string -> unit,
-            ?getPlugin: PluginRef -> System.Type,
+            ?getPlugin: PluginRef -> Type,
             ?precompiledInfo: PrecompiledInfo
         )
         =
