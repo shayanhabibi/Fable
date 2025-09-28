@@ -27,14 +27,14 @@ let attribsOfSymbol (s: FSharpSymbol) =
                 yield "static"
 
             if v.IsLiteral then
-                yield sprintf "%A" v.LiteralValue.Value
+                yield $"%A{v.LiteralValue.Value}"
 
         | :? FSharpEntity as v ->
             v.TryFullName |> ignore // check there is no failure here
 
             match v.BaseType with
             | Some t when t.HasTypeDefinition && t.TypeDefinition.TryFullName.IsSome ->
-                yield sprintf "inherits %s" t.TypeDefinition.FullName
+                yield $"inherits %s{t.TypeDefinition.FullName}"
             | _ -> ()
 
             if v.IsNamespace then
