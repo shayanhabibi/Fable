@@ -9,6 +9,18 @@ type Verbosity =
     | Verbose
     | Silent
 
+[<RequireQualifiedAccess; Struct>]
+type Configuration =
+    | Release
+    | Debug
+    | Custom of string
+
+    override this.ToString() =
+        match this with
+        | Release -> "Release"
+        | Debug -> "Debug"
+        | Custom s -> s
+
 type Language =
     | JavaScript
     | TypeScript

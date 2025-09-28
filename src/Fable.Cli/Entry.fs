@@ -295,14 +295,18 @@ type Runner =
             let configuration =
                 let defaultConfiguration =
                     if watch then
-                        "Debug"
+                        Fable.Configuration.Debug
                     else
-                        "Release"
+                        Fable.Configuration.Release
 
                 match args.Value("-c", "--configuration") with
                 | None -> defaultConfiguration
                 | Some c when String.IsNullOrWhiteSpace c -> defaultConfiguration
-                | Some configurationArg -> configurationArg
+                | Some configurationArg ->
+                    match configurationArg.Trim().ToLower() with
+                    | "release" -> Fable.Configuration.Release
+                    | "debug" -> Fable.Configuration.Debug
+                    | _ -> Fable.Configuration.Custom configurationArg
 
             let define =
                 args.Values "--define"
@@ -335,7 +339,7 @@ type Runner =
                     typedArrays = typedArrays,
                     fileExtension = fileExt,
                     define = define,
-                    debugMode = (configuration = "Debug"),
+                    debugMode = (configuration.IsDebug),
                     optimizeFSharpAst = args.FlagEnabled "--optimize",
                     noReflection = args.FlagEnabled "--noReflection",
                     verbosity = verbosity
@@ -368,7 +372,6 @@ type Runner =
                         |> Map
                     RunProcess = runProc
                     CompilerOptions = compilerOptions
-                    Verbosity = verbosity
                 }
 
             let watchDelay =

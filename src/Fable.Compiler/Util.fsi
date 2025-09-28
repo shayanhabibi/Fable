@@ -20,7 +20,7 @@ type CliArgs =
         PrecompiledLib: string option
         PrintAst: bool
         FableLibraryPath: string option
-        Configuration: string
+        Configuration: Fable.Configuration
         NoRestore: bool
         NoCache: bool
         NoParallelTypeCheck: bool
@@ -30,9 +30,9 @@ type CliArgs =
         Replace: Map<string, string>
         RunProcess: RunProcess option
         CompilerOptions: Fable.CompilerOptions
-        Verbosity: Fable.Verbosity
     }
 
+    member inline Verbosity: Fable.Verbosity
     member ProjectFileAsRelativePath: string
     member RunProcessEnv: (string * string) list
 

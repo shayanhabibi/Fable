@@ -21,7 +21,7 @@ type CliArgs =
         PrecompiledLib: string option
         PrintAst: bool
         FableLibraryPath: string option
-        Configuration: string
+        Configuration: Fable.Configuration
         NoRestore: bool
         NoCache: bool
         NoParallelTypeCheck: bool
@@ -31,8 +31,9 @@ type CliArgs =
         Replace: Map<string, string>
         RunProcess: RunProcess option
         CompilerOptions: Fable.CompilerOptions
-        Verbosity: Fable.Verbosity
     }
+
+    member inline this.Verbosity = this.CompilerOptions.Verbosity
 
     member this.ProjectFileAsRelativePath =
         IO.Path.GetRelativePath(this.RootDir, this.ProjectFile)
@@ -40,8 +41,7 @@ type CliArgs =
     member this.RunProcessEnv =
         let nodeEnv =
             match this.Configuration with
-            | "Release" -> "production"
-            // | "Debug"
+            | Fable.Configuration.Release -> "production"
             | _ -> "development"
 
         [ "NODE_ENV", nodeEnv ]

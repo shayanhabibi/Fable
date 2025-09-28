@@ -119,7 +119,7 @@ type CrackerOptions(cliArgs: CliArgs, evaluateOnly: bool) =
     member _.FableOptions: CompilerOptions = cliArgs.CompilerOptions
     member _.FableLib: string option = cliArgs.FableLibraryPath
     member _.OutDir: string option = cliArgs.OutDir
-    member _.Configuration: string = cliArgs.Configuration
+    member _.Configuration: string = cliArgs.Configuration.ToString()
     member _.Exclude: string list = cliArgs.Exclude
     member _.Replace: Map<string, string> = cliArgs.Replace
     member _.PrecompiledLib: string option = cliArgs.PrecompiledLib
@@ -140,7 +140,7 @@ type CrackerOptions(cliArgs: CliArgs, evaluateOnly: bool) =
                 |> String.concat "/"
 
             let stdout =
-                Process.runSyncWithOutput projDir "dotnet" [ "build"; "-c"; cliArgs.Configuration ]
+                Process.runSyncWithOutput projDir "dotnet" [ "build"; "-c"; cliArgs.Configuration.ToString() ]
 
             Log.always stdout
 

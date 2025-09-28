@@ -36,7 +36,7 @@ module Compiler =
         { CliArgs.ProjectFile = projFile
           FableLibraryPath = None
           RootDir = projDir
-          Configuration = "Debug"
+          Configuration = Fable.Configuration.Debug
           OutDir = None
           IsWatch = false
           Precompile = false
@@ -50,8 +50,7 @@ module Compiler =
           Exclude = ["Fable.Core"]
           Replace = Map.empty
           RunProcess = None
-          CompilerOptions = compilerOptions
-          Verbosity = Verbosity.Normal }
+          CompilerOptions = compilerOptions }
 
     let mutable private state = State.Create(cliArgs, recompileAllFiles=true)
 
