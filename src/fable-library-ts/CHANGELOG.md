@@ -1,5 +1,5 @@
 ---
-last_commit_released: 4a441b1926387a42db6a3a4294acd97b02760ca3
+last_commit_released: aea61b562c461a9b383e805f06f68a3b21ed45c2
 updaters:
   - package.json:
       file: package.json
@@ -14,6 +14,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## 2.7.2 - 2026-09-22
+
+### 🐞 Bug Fixes
+
+* *(js/ts)* Fix Dictionary.Remove and HashSet.Remove to remove empty buckets (#4985) ([aea61b56](https://github.com/shayanhabibi/Fable/commit/aea61b562c461a9b383e805f06f68a3b21ed45c2))
+
+<strong><small>[View changes on Github](https://github.com/shayanhabibi/Fable/compare/4a441b1926387a42db6a3a4294acd97b02760ca3..aea61b562c461a9b383e805f06f68a3b21ed45c2)</small></strong>
 
 ## 2.7.1 - 2026-09-11
 
