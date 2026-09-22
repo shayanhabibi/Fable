@@ -1,5 +1,5 @@
 ---
-last_commit_released: 66efd10960c967660084db2b364e944d167897f4
+last_commit_released: aea61b562c461a9b383e805f06f68a3b21ed45c2
 include:
   - ../fable-library-beam/
   - ../fable-library-dart/
@@ -27,6 +27,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## 5.18.0 - 2026-09-22
+
+### 🚀 Features
+
+* *(dart)* Add `Async` runtime and `Future` interop for dart (#4978) ([b5a337d0](https://github.com/shayanhabibi/Fable/commit/b5a337d0f71b2b1ae91516b8be8a65c7cadc9953))
+
+### 🐞 Bug Fixes
+
+* *(js/ts)* Fix Dictionary.Remove and HashSet.Remove to remove empty buckets (#4985) ([aea61b56](https://github.com/shayanhabibi/Fable/commit/aea61b562c461a9b383e805f06f68a3b21ed45c2))
+* *(python)* Keep the payload type when reading an erased union field (#4981) ([e0536ecd](https://github.com/shayanhabibi/Fable/commit/e0536ecd9b9aeb12cc96c7a2ef2edde7089e2dd0))
+* *(rust)* Less allocations when enumerating strings (#4970) ([5d62380c](https://github.com/shayanhabibi/Fable/commit/5d62380cb30dc1080c6943445a256e27db6246f8))
+* *(rust)* Remove reflection registration on boxing (#4983) ([50a37f78](https://github.com/shayanhabibi/Fable/commit/50a37f78f31394d61349b09a025c1713529d8ec0))
+
+<strong><small>[View changes on Github](https://github.com/shayanhabibi/Fable/compare/66efd10960c967660084db2b364e944d167897f4..aea61b562c461a9b383e805f06f68a3b21ed45c2)</small></strong>
 
 ## 5.17.2 - 2026-09-12
 
