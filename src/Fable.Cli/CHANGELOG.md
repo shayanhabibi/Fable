@@ -1,5 +1,5 @@
 ---
-last_commit_released: a8661874d60694f0faad235adb7f760fed6f72a5
+last_commit_released: 5fa673dbfe5bd2df4b7093ce2df50c1aef0853ac
 include:
   - ../fable-library-beam/
   - ../fable-library-dart/
@@ -27,6 +27,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## 5.21.1 - 2026-10-15
+
+### 🐞 Bug Fixes
+
+* *(beam)* Make lazy sequence wrappers process-portable (#5063) ([9e78a3b3](https://github.com/shayanhabibi/Fable/commit/9e78a3b327ca78d01863bf19b18c543673633af7))
+* *(js/ts)* Avoid full array copy in Encoding.GetString (#5069) ([e6b72ec7](https://github.com/shayanhabibi/Fable/commit/e6b72ec73be454bd3b3233167542a65fc6553c8a))
+* *(python)* Settle cancelled tasks awaited by async workflows (#5064) ([52186937](https://github.com/shayanhabibi/Fable/commit/5218693738defc8a4502d28c206e391b241f9fd8))
+* *(rust)* Support inref struct unions (#5060) ([a3f27e0e](https://github.com/shayanhabibi/Fable/commit/a3f27e0e8c149d6bfeb347ca4f4146ccfd8fb063))
+
+<strong><small>[View changes on Github](https://github.com/shayanhabibi/Fable/compare/a8661874d60694f0faad235adb7f760fed6f72a5..5fa673dbfe5bd2df4b7093ce2df50c1aef0853ac)</small></strong>
 
 ## 5.21.0 - 2026-10-12
 
