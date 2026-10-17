@@ -376,4 +376,107 @@ let isRect (s: Shape) = match s with Rect _ -> true | Circle _ -> false
       compile source
       |> Assert.Exists.errorWith "share a tag value and cannot be told apart by their fields. Add a CaseTest attribute"
       |> ignore
+
+    testCase "TypeScriptTaggedUnion cases sharing a tag compile when the tested case has a CaseTest" <| fun _ ->
+      let source =
+        """
+open Fable.Core
+
+[<TypeScriptTaggedUnion("state")>]
+type Result =
+    | [<CompiledName("done")>] Ok of ok: bool
+    | [<CompiledName("done"); CaseTest("$0.ok === false")>] Failed of ok: bool
+
+let isFailed (r: Result) = match r with Failed _ -> true | Ok _ -> false
+"""
+      compile source
+      |> Assert.Is.strictSuccess
+      |> ignore
+
+    // A CaseTest holds for every value of its case, so its negation rules that case out:
+    // one CaseTest per pair of cases that fields cannot tell apart is enough
+    testCase "TypeScriptTaggedUnion cases sharing a tag compile when the other case has a CaseTest" <| fun _ ->
+      let source =
+        """
+open Fable.Core
+
+[<TypeScriptTaggedUnion("state")>]
+type Result =
+    | [<CompiledName("done")>] Ok of ok: bool
+    | [<CompiledName("done"); CaseTest("$0.ok === false")>] Failed of ok: bool
+
+let isOk (r: Result) = r.IsOk
+"""
+      compile source
+      |> Assert.Is.strictSuccess
+      |> ignore
+
+    // Neither field type rules out the other case at runtime, so fields cannot tell these cases apart
+    testCase "TypeScriptTaggedUnion cases sharing a tag emit error when one field type includes the other" <| fun _ ->
+      let source =
+        """
+open Fable.Core
+
+[<TypeScriptTaggedUnion("state")>]
+type Log =
+    | [<CompiledName("log")>] LogString of message: string
+    | [<CompiledName("log")>] LogObject of message: obj
+
+let isObject (l: Log) = l.IsLogObject
+"""
+      compile source
+      |> Assert.Exists.errorWith "share a tag value and cannot be told apart by their fields. Add a CaseTest attribute"
+      |> ignore
+
+    testCase "TypeScriptTaggedUnion cases sharing a tag emit error when one field type is a base class of the other" <| fun _ ->
+      let source =
+        """
+open Fable.Core
+
+type Animal() = class end
+type Dog() = inherit Animal()
+
+[<TypeScriptTaggedUnion("kind")>]
+type Pet =
+    | [<CompiledName("pet")>] PetAnimal of pet: Animal
+    | [<CompiledName("pet")>] PetDog of pet: Dog
+
+let isAnimal (p: Pet) = p.IsPetAnimal
+"""
+      compile source
+      |> Assert.Exists.errorWith "share a tag value and cannot be told apart by their fields. Add a CaseTest attribute"
+      |> ignore
+
+    // Proposed opt-out: one switch on the union instead of a stub CaseTest on every case
+    testCase "TypeScriptTaggedUnion with DeriveCaseTests = false tests shared tags by the tag only" <| fun _ ->
+      let source =
+        """
+open Fable.Core
+
+[<TypeScriptTaggedUnion("state", DeriveCaseTests = false)>]
+type Result =
+    | [<CompiledName("done")>] Ok of ok: bool
+    | [<CompiledName("done")>] Failed of ok: bool
+
+let isFailed (r: Result) = match r with Failed _ -> true | Ok _ -> false
+"""
+      compile source
+      |> Assert.Is.strictSuccess
+      |> ignore
+
+    testCase "TypeScriptTaggedUnion with DeriveCaseTests = false still applies CaseTest" <| fun _ ->
+      let source =
+        """
+open Fable.Core
+
+[<TypeScriptTaggedUnion("state", DeriveCaseTests = false)>]
+type Terminal =
+    | [<CompiledName("done"); CaseTest("'value' in $0")>] Done of value: float
+    | [<CompiledName("done")>] DoneError of error: string
+
+let isDone (t: Terminal) = t.IsDone
+"""
+      compile source
+      |> Assert.Is.strictSuccess
+      |> ignore
   ]

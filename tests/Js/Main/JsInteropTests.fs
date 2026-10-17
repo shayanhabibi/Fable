@@ -420,6 +420,15 @@ module TaggedUnion =
         | [<CompiledName("pet")>] PetDog of pet: Dog
         | Pending
 
+    [<JS.Pojo>]
+    type Options(name: string) =
+        member val name = name
+
+    [<RequireQualifiedAccess; TypeScriptTaggedUnion("state")>]
+    type PojoField =
+        | [<CompiledName("log")>] LogString of message: string
+        | [<CompiledName("log")>] LogOptions of message: Options
+
 #if FABLE_COMPILER
 module PojoDefinedByConsArgs =
     [<JS.Pojo; AllowNullLiteral>]
@@ -1168,6 +1177,13 @@ let tests =
         (TaggedUnion.DerivedTag.DoneWithExtra (2.5, "e")).IsDone |> equal false
         (TaggedUnion.DerivedTag.Done 1.5).IsDone |> equal true
 #endif
+
+    // JS.Pojo classes are not emitted and their values are plain objects, so they cannot be tested with instanceof
+    testCase "Case testing with TS tagged unions whose cases share a tag works with POJO fields" <| fun () ->
+        (TaggedUnion.PojoField.LogOptions (TaggedUnion.Options "x")).IsLogOptions |> equal true
+        (TaggedUnion.PojoField.LogOptions (TaggedUnion.Options "x")).IsLogString |> equal false
+        (TaggedUnion.PojoField.LogString "hi").IsLogString |> equal true
+        (TaggedUnion.PojoField.LogString "hi").IsLogOptions |> equal false
 
     testCase "Pattern matching with StringEnum works" <| fun () ->
         validatePassword NewPassword
